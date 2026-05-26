@@ -397,22 +397,9 @@
         <div id="solm-versoes" class="solm-versoes"></div>
       </div>
 
-      <!-- Sem solução — quick form -->
-      <div id="solm-ntem" style="display:none">
-        <div class="solm-aviso">⚠ Nenhuma solução cadastrada para este erro.</div>
-        <div class="solm-fg">
-          <label>Solução rápida <span style="color:#dc2626">*</span></label>
-          <textarea id="solm-input-solucao" rows="4" placeholder="Como resolver este erro..."></textarea>
-        </div>
-        <div class="solm-fg">
-          <label>Indicado por</label>
-          <input type="text" id="solm-input-indicado" placeholder="Seu nome">
-        </div>
-      </div>
     </div>
     <div class="solm-foot">
-      <button id="solm-btn-salvar" class="btn-solm-salvar" style="display:none">💾 Salvar solução rápida</button>
-      <a id="solm-link-completo" href="#" target="_blank" class="btn-solm-link">📝 Abrir cadastro completo ↗</a>
+      <a id="solm-link-completo" href="#" target="_blank" class="btn-solm-link">📝 Abrir / editar no cadastro completo ↗</a>
     </div>
   </div>
 </div>
@@ -1000,74 +987,33 @@
   }
 
   function abrirModalSolucao(msg, match) {
+    const link = `cadastro-erros.html?erro=${encodeURIComponent(msg)}`;
+
+    // Sem solução cadastrada → abre o cadastro completo direto (nova aba)
+    if (!match) {
+      window.open(link, "_blank");
+      return;
+    }
+
+    // Tem solução → exibe no modal
     _modalMsg = msg;
     document.getElementById("solm-erro-ref").textContent = msg;
-    const link = `cadastro-erros.html?erro=${encodeURIComponent(msg)}`;
     document.getElementById("solm-link-completo").href = link;
+    document.getElementById("solm-titulo").textContent = "✅ Solução cadastrada";
 
-    if (match) {
-      document.getElementById("solm-titulo").textContent = "✅ Solução cadastrada";
-      const solucoes = match.solucoes || [];
-      const solAtual = solucoes[solucoes.length - 1];
-      document.getElementById("solm-tem").style.display = "";
-      document.getElementById("solm-ntem").style.display = "none";
-      document.getElementById("solm-btn-salvar").style.display = "none";
-      document.getElementById("solm-solucao").textContent = solAtual?.solucao || "—";
-      const ind = solAtual ? `Versão ${solucoes.length} — indicado por ${solAtual.indicadoPor || "?"} em ${fmtDataModal(solAtual.dataIndicacao)}` : "";
-      document.getElementById("solm-indicado").textContent = ind;
-      document.getElementById("solm-versoes").innerHTML = solucoes.length > 1
-        ? `📜 ${solucoes.length} versões — <a href="${link}" target="_blank">ver histórico completo</a>` : "";
-    } else {
-      document.getElementById("solm-titulo").textContent = "📋 Cadastrar solução";
-      document.getElementById("solm-tem").style.display = "none";
-      document.getElementById("solm-ntem").style.display = "";
-      document.getElementById("solm-btn-salvar").style.display = "";
-      document.getElementById("solm-input-solucao").value = "";
-      document.getElementById("solm-input-indicado").value = "";
-    }
+    const solucoes = match.solucoes || [];
+    const solAtual = solucoes[solucoes.length - 1];
+    document.getElementById("solm-tem").style.display = "";
+    document.getElementById("solm-solucao").textContent = solAtual?.solucao || "—";
+    const ind = solAtual ? `Versão ${solucoes.length} — indicado por ${solAtual.indicadoPor || "?"} em ${fmtDataModal(solAtual.dataIndicacao)}` : "";
+    document.getElementById("solm-indicado").textContent = ind;
+    document.getElementById("solm-versoes").innerHTML = solucoes.length > 1
+      ? `📜 ${solucoes.length} versões — <a href="${link}" target="_blank">ver histórico completo</a>` : "";
 
     document.getElementById("modal-solucao").style.display = "flex";
   }
 
   function fecharModalSolucao() { document.getElementById("modal-solucao").style.display = "none"; }
-
-  function _uid() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-      const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
-    });
-  }
-
-  async function salvarSolucaoRapida() {
-    const solucao  = document.getElementById("solm-input-solucao").value.trim();
-    const indicado = document.getElementById("solm-input-indicado").value.trim();
-    if (!solucao) { document.getElementById("solm-input-solucao").focus(); return; }
-
-    const btn = document.getElementById("solm-btn-salvar");
-    btn.disabled = true; btn.textContent = "⏳ Salvando...";
-
-    try {
-      const cfg = JSON.parse(localStorage.getItem(FB_LS) || "null");
-      if (!cfg) throw new Error("Firebase não configurado. Abra o Cadastro de Erros para configurar.");
-      if (!firebase.apps.length) firebase.initializeApp(cfg);
-      const db  = firebase.firestore();
-      await db.collection("erros-esfinge").add({
-        erro: _modalMsg, registrado: indicado || "", base: "", ferramenta: "", como: "", dicas: "",
-        importadoDaConsulta: true,
-        solucoes: [{ id: _uid(), solucao, indicadoPor: indicado || "Anônimo", dataIndicacao: new Date().toISOString(), versao: 1 }],
-        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      fecharModalSolucao();
-      const t = document.createElement("div");
-      t.style.cssText = "position:fixed;bottom:24px;right:24px;background:#15803d;color:#fff;padding:10px 18px;border-radius:8px;font-size:.83rem;font-weight:600;z-index:300;box-shadow:0 4px 14px rgba(0,0,0,.2);";
-      t.textContent = "✅ Solução cadastrada com sucesso!";
-      document.body.appendChild(t);
-      setTimeout(() => t.remove(), 3000);
-    } catch (err) {
-      alert("Erro ao salvar: " + err.message);
-      btn.disabled = false; btn.textContent = "💾 Salvar solução rápida";
-    }
-  }
 
   /* ══════════════════════════════════════════════
      INIT
@@ -1078,10 +1024,9 @@
     document.getElementById("senha").addEventListener("keydown", e => { if (e.key==="Enter") autenticar(); });
     document.getElementById("numeroLote").addEventListener("keydown", e => { if (e.key==="Enter") consultarLote(); });
 
-    // Modal: botões
+    // Modal: fechar
     document.getElementById("solm-close").addEventListener("click", fecharModalSolucao);
     document.getElementById("modal-solucao").addEventListener("click", e => { if (e.target === document.getElementById("modal-solucao")) fecharModalSolucao(); });
-    document.getElementById("solm-btn-salvar").addEventListener("click", salvarSolucaoRapida);
   });
 </script>
 </body>
