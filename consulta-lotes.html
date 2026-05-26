@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consulta TCE/SC — e-Sfinge</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px;
+      color: #1a1a2e;
+    }
+
+    header {
+      margin-bottom: 28px;
+      text-align: center;
+    }
+    header h1 { font-size: 1.4rem; font-weight: 700; color: #1a3a6b; }
+    header span { font-size: 0.85rem; color: #666; display: block; margin-top: 4px; }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.08);
+      padding: 28px 32px;
+      width: 100%;
+      max-width: 520px;
+      margin-bottom: 20px;
+    }
+
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #1a3a6b;
+      margin-bottom: 18px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #e8ecf0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-badge {
+      background: #1a3a6b;
+      color: #fff;
+      border-radius: 50%;
+      width: 22px; height: 22px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .field { margin-bottom: 14px; }
+    label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #dde2ea;
+      border-radius: 7px;
+      font-size: 0.95rem;
+      color: #1a1a2e;
+      background: #fafbfc;
+      transition: border-color .2s;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #1a3a6b;
+      background: #fff;
+    }
+
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    button {
+      width: 100%;
+      padding: 11px;
+      background: #1a3a6b;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: background .2s, transform .1s;
+    }
+    button:hover { background: #15316a; }
+    button:active { transform: scale(0.98); }
+    button:disabled { background: #9ab; cursor: not-allowed; }
+
+    .status-bar {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      margin-top: 12px;
+    }
+    .status-bar.ok   { background: #e6f4ea; color: #1e7e34; display: flex; }
+    .status-bar.erro { background: #fdecea; color: #c0392b; display: flex; }
+    .status-bar.info { background: #e8f0fe; color: #1a3a6b; display: flex; }
+
+    #resultado-card { display: none; max-width: 760px; }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    .result-header h2 { border: none; padding: 0; margin: 0; }
+
+    .btn-copy {
+      width: auto;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      margin: 0;
+      background: #e8f0fe;
+      color: #1a3a6b;
+      border-radius: 6px;
+    }
+    .btn-copy:hover { background: #d0e0fc; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .summary-item {
+      background: #f4f6fb;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+    .summary-item .label { font-size: 0.72rem; color: #888; margin-bottom: 3px; }
+    .summary-item .value { font-size: 0.95rem; font-weight: 600; color: #1a1a2e; }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .badge-sucesso { background: #d4edda; color: #155724; }
+    .badge-erro    { background: #f8d7da; color: #721c24; }
+    .badge-info    { background: #cce5ff; color: #004085; }
+
+    details { margin-top: 14px; }
+    summary {
+      cursor: pointer;
+      font-size: 0.82rem;
+      color: #666;
+      user-select: none;
+      padding: 6px 0;
+    }
+    summary:hover { color: #1a3a6b; }
+
+    pre {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      overflow-x: auto;
+      line-height: 1.5;
+      max-height: 420px;
+      overflow-y: auto;
+      margin-top: 8px;
+    }
+
+    .erros-list { margin-top: 10px; }
+    .erro-item {
+      background: #fff5f5;
+      border-left: 3px solid #e74c3c;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
+    }
+    .erro-item .msg  { color: #c0392b; font-weight: 600; margin-bottom: 4px; }
+    .erro-item .meta { color: #666; font-size: 0.78rem; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .cors-warn {
+      background: #fff8e1;
+      border: 1px solid #ffe082;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 0.82rem;
+      color: #5d4037;
+      margin-top: 12px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>e-Sfinge TCE/SC</h1>
+  <span>Consulta de Lotes — Módulo Tributário</span>
+</header>
+
+<!-- Passo 1: Credenciais -->
+<div class="card">
+  <h2><span class="step-badge">1</span> Credenciais de Acesso</h2>
+
+  <div class="row-2">
+    <div class="field">
+      <label>Código UG</label>
+      <input id="codigoUg" type="text" placeholder="ex: 12300">
+    </div>
+    <div class="field">
+      <label>Código de Acesso (CPF)</label>
+      <input id="codigoAcesso" type="text" placeholder="ex: 07460949906">
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Senha</label>
+    <input id="senha" type="password" placeholder="Senha do e-Sfinge  (123456 = testes)">
+  </div>
+
+  <button id="btn-auth" onclick="autenticar()">Autenticar</button>
+  <div id="status-auth" class="status-bar"></div>
+  <div id="cors-warn" class="cors-warn">
+    ⚠ <strong>Erro de CORS:</strong> o navegador bloqueou a requisição direta à API do TCE.
+    Para usar esta aplicação via browser, rode localmente:<br><br>
+    <code>git clone https://github.com/emanuelmelo87/tce-sc-consulta-lotes<br>
+    pip install -r requirements.txt &amp;&amp; python app.py</code>
+  </div>
+</div>
+
+<!-- Passo 2: Consulta -->
+<div class="card">
+  <h2><span class="step-badge">2</span> Consultar Lote</h2>
+
+  <div class="row-2">
+    <div class="field">
+      <label>Módulo</label>
+      <select id="modulo">
+        <option value="tributario">Tributário V5</option>
+        <option value="notafiscal">Notas Fiscais V5</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Número do Lote</label>
+      <input id="numeroLote" type="number" placeholder="ex: 2171233">
+    </div>
+  </div>
+
+  <button id="btn-consultar" onclick="consultarLote()" disabled>Consultar</button>
+  <div id="status-consulta" class="status-bar"></div>
+</div>
+
+<!-- Resultado -->
+<div class="card" id="resultado-card">
+  <div class="result-header">
+    <h2><span class="step-badge">✓</span> Resultado</h2>
+    <button class="btn-copy" onclick="copiarJson()">Copiar JSON</button>
+  </div>
+  <div id="summary-grid" class="summary-grid"></div>
+  <div id="erros-container"></div>
+  <details>
+    <summary>JSON completo</summary>
+    <pre id="json-output"></pre>
+  </details>
+</div>
+
+<script>
+  const URLS = {
+    producao: "https://api.virtual.tce.sc.gov.br",
+    testes:   "https://virtual.testing.tce.sc.gov.br",
+  };
+
+  let token    = null;
+  let baseUrl  = null;
+  let jsonData = null;
+
+  // ── Autenticação ────────────────────────────────────────────────────
+  async function autenticar() {
+    const btn    = document.getElementById("btn-auth");
+    const status = document.getElementById("status-auth");
+    const warn   = document.getElementById("cors-warn");
+
+    const ug     = document.getElementById("codigoUg").value.trim();
+    const acesso = document.getElementById("codigoAcesso").value.trim();
+    const senha  = document.getElementById("senha").value;
+
+    if (!ug || !acesso || !senha) {
+      mostrarStatus(status, "erro", "Preencha todos os campos.");
+      return;
+    }
+
+    baseUrl = senha === "123456" ? URLS.testes : URLS.producao;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Autenticando…';
+    warn.style.display = "none";
+    status.className = "status-bar";
+
+    const url = new URL(`${baseUrl}/esfingeonline/autenticacao/login`);
+    url.searchParams.set("codigoUg", ug);
+    url.searchParams.set("descricaoEmpresaTI", "BETHA SISTEMAS LTDA");
+    url.searchParams.set("descritivoSoftware", "PRESTAÇÃO DE CONTAS");
+
+    try {
+      const resp = await fetch(url.toString(), {
+        method: "POST",
+        headers: { "codigoAcesso": acesso, "senha": senha },
+      });
+
+      if (!resp.ok) {
+        const txt = await resp.text();
+        mostrarStatus(status, "erro", `Erro ${resp.status}: ${txt.slice(0, 120)}`);
+        return;
+      }
+
+      const data = await resp.json();
+      token = data.chave;
+      if (!token) {
+        mostrarStatus(status, "erro", "Token não retornado: " + JSON.stringify(data).slice(0, 100));
+        return;
+      }
+
+      mostrarStatus(status, "ok", `✓ Autenticado — ${baseUrl}`);
+      document.getElementById("btn-consultar").disabled = false;
+
+    } catch (e) {
+      if (e instanceof TypeError && e.message.toLowerCase().includes("fetch")) {
+        warn.style.display = "block";
+        mostrarStatus(status, "erro", "Bloqueado pelo navegador (CORS). Veja aviso abaixo.");
+      } else {
+        mostrarStatus(status, "erro", `Erro: ${e.message}`);
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Autenticar";
+    }
+  }
+
+  // ── Consulta de lote ────────────────────────────────────────────────
+  async function consultarLote() {
+    const btn    = document.getElementById("btn-consultar");
+    const status = document.getElementById("status-consulta");
+    const modulo = document.getElementById("modulo").value;
+    const lote   = document.getElementById("numeroLote").value.trim();
+
+    if (!lote) { mostrarStatus(status, "erro", "Informe o número do lote."); return; }
+    if (!token) { mostrarStatus(status, "erro", "Autentique primeiro."); return; }
+
+    const paths = {
+      tributario: `/esfingeonline/v5/tributario/consultarPorNumeroLote/${lote}`,
+      notafiscal: `/esfingeonline/v5/notafiscal/consultarPorNumeroLote/${lote}`,
+    };
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Consultando…';
+    document.getElementById("resultado-card").style.display = "none";
+    status.className = "status-bar";
+
+    try {
+      const resp = await fetch(`${baseUrl}${paths[modulo]}`, {
+        headers: { "AUTH_TOKEN": token, "Content-Type": "application/json" },
+      });
+
+      if (!resp.ok) {
+        let detalhe = "";
+        try { detalhe = JSON.stringify(await resp.json()).slice(0, 150); }
+        catch { detalhe = await resp.text().then(t => t.slice(0, 150)); }
+        mostrarStatus(status, "erro", `Erro ${resp.status}: ${detalhe}`);
+        return;
+      }
+
+      jsonData = await resp.json();
+      mostrarStatus(status, "ok", "Consulta concluída.");
+      renderizarResultado(jsonData, modulo);
+
+    } catch (e) {
+      mostrarStatus(status, "erro", `Erro: ${e.message}`);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Consultar";
+    }
+  }
+
+  // ── Renderização ────────────────────────────────────────────────────
+  function renderizarResultado(data, modulo) {
+    const resCard = document.getElementById("resultado-card");
+    document.getElementById("json-output").textContent = JSON.stringify(data, null, 2);
+
+    const campos = extrairCamposResumo(data, modulo);
+    document.getElementById("summary-grid").innerHTML = campos.map(c =>
+      `<div class="summary-item"><div class="label">${c.label}</div><div class="value">${c.value}</div></div>`
+    ).join("");
+
+    const errosEl = document.getElementById("erros-container");
+    errosEl.innerHTML = "";
+    const erros = data?.retornoErros?.erros || (Array.isArray(data?.erros) ? data.erros : []);
+    if (erros.length > 0) {
+      errosEl.innerHTML = `<div style="font-size:.85rem;font-weight:600;color:#c0392b;margin-bottom:8px;">⚠ ${erros.length} erro(s) de negócio</div>`;
+      erros.slice(0, 20).forEach(e => {
+        const msg  = e.mensagem || e.descricao || JSON.stringify(e);
+        const meta = e.objetoErro
+          ? Object.entries(e.objetoErro).map(([k,v]) => `<b>${k}</b>: ${v}`).join(" · ")
+          : "";
+        errosEl.innerHTML += `<div class="erro-item"><div class="msg">${msg}</div>${meta ? `<div class="meta">${meta}</div>` : ""}</div>`;
+      });
+      if (erros.length > 20)
+        errosEl.innerHTML += `<p style="font-size:.8rem;color:#888">…e mais ${erros.length - 20} erros. Veja o JSON completo.</p>`;
+    }
+
+    resCard.style.display = "block";
+    resCard.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function extrairCamposResumo(data, modulo) {
+    const campos = [];
+    const add = (label, value, badge) => {
+      if (value == null) return;
+      const v = badge ? `<span class="badge badge-${badge}">${value}</span>` : String(value);
+      campos.push({ label, value: v });
+    };
+    add("Nº Remessa",      data.numeroRemessa ?? data.idRemessaOnline ?? data.identificadorRemessaOnline);
+    add("Situação",        data.situacao,       situacaoBadge(data.situacao));
+    add("Ano/Mês",         data.anoMes);
+    add("Nº Lote",         data.numeroLote ?? data.identificadorLote);
+    add("UG",              data.identificadorUnidadeGestora ?? data.codigoUnidadeGestora);
+    add("Total registros", data.quantidadeRegistros ?? data.retornoErros?.totalRegistros);
+    add("Total erros",     data.retornoErros?.totalErros ?? data.totalErros);
+    add("Cód. registro",   data.codigoRegistroInformacao);
+    if (campos.length === 0)
+      Object.entries(data).forEach(([k,v]) => { if (typeof v !== "object") add(k, v); });
+    return campos;
+  }
+
+  function situacaoBadge(sit) {
+    if (!sit) return null;
+    if (sit.includes("SUCESSO"))  return "sucesso";
+    if (sit.includes("ERRO") || sit.includes("ABORTADO")) return "erro";
+    return "info";
+  }
+
+  function mostrarStatus(el, tipo, msg) {
+    el.className = `status-bar ${tipo}`;
+    el.textContent = msg;
+  }
+
+  function copiarJson() {
+    navigator.clipboard.writeText(document.getElementById("json-output").textContent)
+      .then(() => alert("JSON copiado!"));
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("numeroLote").addEventListener("keydown", e => { if (e.key === "Enter") consultarLote(); });
+    document.getElementById("senha").addEventListener("keydown", e => { if (e.key === "Enter") autenticar(); });
+  });
+</script>
+</body>
+</html>

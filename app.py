@@ -17,6 +17,12 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/consulta-lotes")
+@app.route("/consulta-lotes.html")
+def consulta_lotes_page():
+    return render_template("consulta-lotes.html")
+
+
 @app.route("/api/autenticar", methods=["POST"])
 def autenticar():
     body = request.json
