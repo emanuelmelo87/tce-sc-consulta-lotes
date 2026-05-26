@@ -696,6 +696,24 @@
     <div class="panel-body">
       <form id="form-erro" autocomplete="off">
 
+        <!-- Banner: importado da consulta de lotes -->
+        <div id="banner-importado" style="display:none;background:#eff6ff;border:1.5px solid #93c5fd;border-radius:9px;padding:10px 13px;margin-bottom:13px;display:none;flex-direction:column;gap:3px;">
+          <div style="font-size:.78rem;font-weight:700;color:#1d4ed8;display:flex;align-items:center;gap:6px;">
+            📋 Importado da Consulta de Lotes
+          </div>
+          <div style="font-size:.76rem;color:#374151;">Formulário pré-preenchido. Complete os campos e salve.</div>
+        </div>
+        <!-- Banner: erro já cadastrado -->
+        <div id="banner-existente" style="display:none;background:#dcfce7;border:1.5px solid #86efac;border-radius:9px;padding:10px 13px;margin-bottom:13px;flex-direction:column;gap:4px;">
+          <div style="font-size:.78rem;font-weight:700;color:#15803d;display:flex;align-items:center;gap:6px;">
+            ✅ Solução já cadastrada para este erro
+          </div>
+          <div id="banner-existente-txt" style="font-size:.76rem;color:#166534;"></div>
+          <button id="banner-existente-ir" style="background:none;border:none;font-size:.76rem;color:#15803d;text-decoration:underline;cursor:pointer;text-align:left;padding:0;width:fit-content;">
+            Ver registro →
+          </button>
+        </div>
+
         <div class="fg">
           <label for="f-erro">Mensagem de Erro <span class="req">*</span></label>
           <textarea id="f-erro" rows="3" required placeholder="Descreva a mensagem de erro exibida..."></textarea>
@@ -947,6 +965,7 @@ function iniciarListener() {
   if (unsub) unsub();
   unsub = col.orderBy("criadoEm", "desc").onSnapshot(
     snap => {
+      const primeiraVez = erros.length === 0;
       erros = snap.docs.map(doc => {
         const d = doc.data();
         return {
@@ -960,6 +979,7 @@ function iniciarListener() {
       setStatus("ok", `${erros.length} registro${erros.length !== 1 ? "s" : ""}`);
       renderLista();
       atualizarFiltroFerr();
+      if (primeiraVez && URL_ERRO_PARAM) verificarImportacao();
     },
     err => {
       setStatus("error", "Erro ao carregar");
@@ -1354,6 +1374,44 @@ document.querySelectorAll(".modal-overlay").forEach(overlay =>
   overlay.addEventListener("click", e => { if (e.target === overlay) overlay.style.display = "none"; })
 );
 
+// ─── URL Param: ?erro= (importado da Consulta de Lotes) ──────────────────
+const URL_ERRO_PARAM = new URLSearchParams(window.location.search).get("erro");
+
+function verificarImportacao() {
+  if (!URL_ERRO_PARAM) return;
+
+  // Pré-preenche o campo de erro
+  const decoded = decodeURIComponent(URL_ERRO_PARAM);
+  document.getElementById("f-erro").value = decoded;
+
+  // Exibe o banner de importado
+  const bannerImp = document.getElementById("banner-importado");
+  bannerImp.style.display = "flex";
+
+  // Verifica se já existe solução cadastrada (usa o array já carregado)
+  const mN = normStr(decoded);
+  const match = erros.find(e => {
+    const eN = normStr(e.erro || "");
+    return eN === mN || eN.includes(mN) || mN.includes(eN);
+  });
+
+  if (match) {
+    bannerImp.style.display = "none"; // substitui pelo banner de existente
+    const bannerEx = document.getElementById("banner-existente");
+    bannerEx.style.display = "flex";
+    const solAtual = match.solucoes?.[match.solucoes.length - 1];
+    document.getElementById("banner-existente-txt").textContent =
+      solAtual ? `"${solAtual.solucao.slice(0, 100)}${solAtual.solucao.length > 100 ? "…" : ""}"` : "";
+    document.getElementById("banner-existente-ir").addEventListener("click", () => {
+      carregarForm(match);
+      const card = document.querySelector(`.btn-edit[data-id="${match.id}"]`)?.closest(".erro-card");
+      if (card) { card.scrollIntoView({ behavior: "smooth", block: "center" }); card.classList.add("editando"); }
+    });
+  }
+}
+
+function normStr(s) { return String(s || "").toLowerCase().trim().replace(/\s+/g, " "); }
+
 // ─── Inicialização ────────────────────────────────────────────────────────
 (function init() {
   const cfg = lerConfig();
@@ -1368,6 +1426,12 @@ document.querySelectorAll(".modal-overlay").forEach(overlay =>
         <div class="empty-icon">🔥</div>
         <p>Configure o Firebase para começar a usar.<br>Clique em <strong>⚙️ Firebase</strong> no topo.</p>
       </div>`;
+  }
+
+  // Se Firebase não configurado mas tem param, preenche o campo mesmo assim
+  if (URL_ERRO_PARAM && !cfg) {
+    document.getElementById("f-erro").value = decodeURIComponent(URL_ERRO_PARAM);
+    document.getElementById("banner-importado").style.display = "flex";
   }
 })();
 </script>

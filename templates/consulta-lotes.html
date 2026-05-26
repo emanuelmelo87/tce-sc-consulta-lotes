@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Consulta de Lotes — e-Sfinge TCE/SC</title>
+  <!-- Firebase (para verificação de soluções cadastradas) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -176,6 +179,86 @@
       .explorer-wrap { flex-direction: column; }
       .side-panel-inner { width: 100%; }
     }
+
+    /* ── Botão solução no cabeçalho do grupo ── */
+    .sol-slot { display: inline-flex; align-items: center; }
+    .sol-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 3px 11px; border-radius: 99px;
+      font-size: .72rem; font-weight: 700;
+      cursor: pointer; border: none; white-space: nowrap;
+      transition: .15s; line-height: 1.4;
+    }
+    .sol-badge.encontrado { background: #dcfce7; color: #15803d; border: 1px solid #86efac; }
+    .sol-badge.encontrado:hover { background: #bbf7d0; }
+    .sol-badge.novo { background: #fef9c3; color: #854d0e; border: 1px solid #fde68a; }
+    .sol-badge.novo:hover { background: #fef08a; }
+
+    /* ── Modal Solução ── */
+    .solm-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.45);
+      z-index: 120; display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .solm-box {
+      background: #fff; border-radius: 14px; width: 100%; max-width: 560px;
+      max-height: 88vh; overflow: hidden; display: flex; flex-direction: column;
+      box-shadow: 0 24px 60px rgba(0,0,0,.22);
+    }
+    .solm-head {
+      padding: 16px 20px 13px; border-bottom: 1px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .solm-head h3 { font-size: .97rem; font-weight: 700; }
+    .solm-close {
+      background: none; border: none; font-size: 1.3rem; color: #6b7280;
+      cursor: pointer; padding: 0 4px; line-height: 1;
+    }
+    .solm-body { padding: 18px 20px; overflow-y: auto; flex: 1; }
+    .solm-foot {
+      padding: 13px 20px; border-top: 1px solid #e2e8f0;
+      display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    }
+    .solm-erro-ref {
+      background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;
+      padding: 9px 13px; font-size: .82rem; margin-bottom: 14px;
+      color: #1a1a2e; line-height: 1.45;
+    }
+    .solm-erro-ref strong {
+      display: block; font-size: .68rem; text-transform: uppercase;
+      letter-spacing: .05em; color: #92400e; margin-bottom: 3px;
+    }
+    .solm-solucao {
+      background: #dcfce7; border-radius: 9px; padding: 12px 14px;
+      font-size: .86rem; color: #1a1a2e; line-height: 1.55; margin-bottom: 8px;
+    }
+    .solm-indicado { font-size: .72rem; color: #4b7a59; margin-bottom: 8px; }
+    .solm-versoes  { font-size: .75rem; color: #6b7280; }
+    .solm-versoes a { color: #1a3a6b; }
+    .solm-aviso {
+      background: #fef3c7; border: 1px solid #fde68a; border-radius: 8px;
+      padding: 9px 13px; font-size: .82rem; color: #92400e;
+      margin-bottom: 14px;
+    }
+    .solm-fg { display: flex; flex-direction: column; gap: 4px; margin-bottom: 11px; }
+    .solm-fg label { font-size: .72rem; font-weight: 700; color: #374151; text-transform: uppercase; letter-spacing: .04em; }
+    .solm-fg textarea, .solm-fg input {
+      border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 8px 11px;
+      font-size: .85rem; font-family: inherit; width: 100%;
+    }
+    .solm-fg textarea:focus, .solm-fg input:focus { outline: none; border-color: #1a3a6b; }
+    .solm-fg textarea { resize: vertical; }
+    .btn-solm-salvar {
+      background: #1a3a6b; color: #fff; border: none; border-radius: 8px;
+      padding: 9px 18px; font-size: .84rem; font-weight: 700; cursor: pointer;
+    }
+    .btn-solm-salvar:hover:not(:disabled) { background: #1e4a8a; }
+    .btn-solm-salvar:disabled { opacity: .6; cursor: default; }
+    .btn-solm-link {
+      background: #f1f5f9; color: #374151; border: none; border-radius: 8px;
+      padding: 9px 14px; font-size: .82rem; font-weight: 600; cursor: pointer;
+      text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
+    }
+    .btn-solm-link:hover { background: #e2e8f0; color: #1a3a6b; }
   </style>
 </head>
 <body>
@@ -285,6 +368,48 @@
         <button class="panel-close" onclick="fecharPainel()">×</button>
       </div>
       <div class="panel-body" id="panel-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     MODAL: VER / CADASTRAR SOLUÇÃO
+════════════════════════════════════════════ -->
+<div id="modal-solucao" class="solm-overlay" style="display:none">
+  <div class="solm-box">
+    <div class="solm-head">
+      <h3 id="solm-titulo">Solução</h3>
+      <button class="solm-close" id="solm-close">×</button>
+    </div>
+    <div class="solm-body">
+      <div class="solm-erro-ref">
+        <strong>Mensagem de erro</strong>
+        <span id="solm-erro-ref"></span>
+      </div>
+
+      <!-- Tem solução -->
+      <div id="solm-tem" style="display:none">
+        <div id="solm-solucao" class="solm-solucao"></div>
+        <div id="solm-indicado" class="solm-indicado"></div>
+        <div id="solm-versoes" class="solm-versoes"></div>
+      </div>
+
+      <!-- Sem solução — quick form -->
+      <div id="solm-ntem" style="display:none">
+        <div class="solm-aviso">⚠ Nenhuma solução cadastrada para este erro.</div>
+        <div class="solm-fg">
+          <label>Solução rápida <span style="color:#dc2626">*</span></label>
+          <textarea id="solm-input-solucao" rows="4" placeholder="Como resolver este erro..."></textarea>
+        </div>
+        <div class="solm-fg">
+          <label>Indicado por</label>
+          <input type="text" id="solm-input-indicado" placeholder="Seu nome">
+        </div>
+      </div>
+    </div>
+    <div class="solm-foot">
+      <button id="solm-btn-salvar" class="btn-solm-salvar" style="display:none">💾 Salvar solução rápida</button>
+      <a id="solm-link-completo" href="#" target="_blank" class="btn-solm-link">📝 Abrir cadastro completo ↗</a>
     </div>
   </div>
 </div>
@@ -456,8 +581,8 @@
     const grupos = agruparPorMensagem(erros);
     Object.entries(grupos).forEach(([msg, recs]) => {
       const header = document.createElement("div");
-      header.style.cssText = "font-size:.82rem;font-weight:700;color:#991b1b;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:9px 14px;margin-bottom:8px;";
-      header.textContent = `⚠ ${recs.length} erro${recs.length>1?"s":""} — ${msg}`;
+      header.style.cssText = "font-size:.82rem;font-weight:700;color:#991b1b;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:9px 14px;margin-bottom:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;";
+      header.innerHTML = `<span>⚠ ${recs.length} erro${recs.length>1?"s":""} — ${escHtml(msg)}</span><span class="sol-slot" data-msg="${escHtml(msg)}"></span>`;
       container.appendChild(header);
 
       recs.forEach(rec => {
@@ -505,8 +630,10 @@
       header.className = "group-header";
       header.innerHTML = `<span class="gh-icon">⚠</span><span class="gh-msg">${escHtml(msg)}</span>
         <span class="gh-count">${registros.length} registro${registros.length>1?"s":""}</span>
+        <span class="sol-slot" data-msg="${escHtml(msg)}" style="margin-left:4px"></span>
         <span class="gh-toggle">▾</span>`;
-      header.addEventListener("click", () => {
+      header.addEventListener("click", (e) => {
+        if (e.target.closest(".sol-slot") || e.target.closest(".sol-badge")) return; // não colapsa ao clicar no badge
         const tw = groupEl.querySelector(".error-table-wrap");
         const collapsed = tw.style.display === "none";
         tw.style.display = collapsed ? "" : "none";
@@ -781,12 +908,150 @@
   }
 
   /* ══════════════════════════════════════════════
+     FIREBASE — VERIFICAÇÃO DE SOLUÇÕES
+  ══════════════════════════════════════════════ */
+  const FB_LS = "fb-config-v1";
+  let solucoesDB = [];
+
+  function iniciarFirebaseConsulta() {
+    try {
+      const cfg = JSON.parse(localStorage.getItem(FB_LS) || "null");
+      if (!cfg || !cfg.projectId) return;
+      if (!firebase.apps.length) firebase.initializeApp(cfg);
+      const db = firebase.firestore();
+      db.collection("erros-esfinge").onSnapshot(snap => {
+        solucoesDB = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        anotarCabecalhos(); // atualiza badges já renderizados
+      }, () => {}); // silencia erros — feature opcional
+    } catch {}
+  }
+
+  function normStr(s) { return String(s || "").toLowerCase().trim().replace(/\s+/g, " "); }
+
+  function buscarSolucao(msg) {
+    const mN = normStr(msg);
+    return solucoesDB.find(s => {
+      const eN = normStr(s.erro || "");
+      return eN === mN || eN.includes(mN) || mN.includes(eN);
+    }) || null;
+  }
+
+  function anotarCabecalhos() {
+    document.querySelectorAll(".sol-slot[data-msg]").forEach(slot => {
+      if (slot.dataset.anotado === "1") return;
+      const msg = slot.getAttribute("data-msg");
+      const match = buscarSolucao(msg);
+      slot.innerHTML = match
+        ? `<button class="sol-badge encontrado">✅ Ver solução</button>`
+        : `<button class="sol-badge novo">📋 Cadastrar solução</button>`;
+      slot.querySelector("button").addEventListener("click", e => {
+        e.stopPropagation();
+        abrirModalSolucao(msg, match);
+      });
+      slot.dataset.anotado = "1";
+    });
+  }
+
+  // Também anota quando novos modos são renderizados
+  const _renderModo = renderModo;
+  function renderModo() {
+    _renderModo();
+    setTimeout(anotarCabecalhos, 50); // aguarda DOM
+  }
+
+  /* ══════════════════════════════════════════════
+     MODAL SOLUÇÃO
+  ══════════════════════════════════════════════ */
+  let _modalMsg = null;
+
+  function fmtDataModal(iso) {
+    if (!iso) return "";
+    try { return new Date(iso?.toDate ? iso.toDate() : iso).toLocaleDateString("pt-BR"); } catch { return ""; }
+  }
+
+  function abrirModalSolucao(msg, match) {
+    _modalMsg = msg;
+    document.getElementById("solm-erro-ref").textContent = msg;
+    const link = `cadastro-erros.html?erro=${encodeURIComponent(msg)}`;
+    document.getElementById("solm-link-completo").href = link;
+
+    if (match) {
+      document.getElementById("solm-titulo").textContent = "✅ Solução cadastrada";
+      const solucoes = match.solucoes || [];
+      const solAtual = solucoes[solucoes.length - 1];
+      document.getElementById("solm-tem").style.display = "";
+      document.getElementById("solm-ntem").style.display = "none";
+      document.getElementById("solm-btn-salvar").style.display = "none";
+      document.getElementById("solm-solucao").textContent = solAtual?.solucao || "—";
+      const ind = solAtual ? `Versão ${solucoes.length} — indicado por ${solAtual.indicadoPor || "?"} em ${fmtDataModal(solAtual.dataIndicacao)}` : "";
+      document.getElementById("solm-indicado").textContent = ind;
+      document.getElementById("solm-versoes").innerHTML = solucoes.length > 1
+        ? `📜 ${solucoes.length} versões — <a href="${link}" target="_blank">ver histórico completo</a>` : "";
+    } else {
+      document.getElementById("solm-titulo").textContent = "📋 Cadastrar solução";
+      document.getElementById("solm-tem").style.display = "none";
+      document.getElementById("solm-ntem").style.display = "";
+      document.getElementById("solm-btn-salvar").style.display = "";
+      document.getElementById("solm-input-solucao").value = "";
+      document.getElementById("solm-input-indicado").value = "";
+    }
+
+    document.getElementById("modal-solucao").style.display = "flex";
+  }
+
+  function fecharModalSolucao() { document.getElementById("modal-solucao").style.display = "none"; }
+
+  function _uid() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+  }
+
+  async function salvarSolucaoRapida() {
+    const solucao  = document.getElementById("solm-input-solucao").value.trim();
+    const indicado = document.getElementById("solm-input-indicado").value.trim();
+    if (!solucao) { document.getElementById("solm-input-solucao").focus(); return; }
+
+    const btn = document.getElementById("solm-btn-salvar");
+    btn.disabled = true; btn.textContent = "⏳ Salvando...";
+
+    try {
+      const cfg = JSON.parse(localStorage.getItem(FB_LS) || "null");
+      if (!cfg) throw new Error("Firebase não configurado. Abra o Cadastro de Erros para configurar.");
+      if (!firebase.apps.length) firebase.initializeApp(cfg);
+      const db  = firebase.firestore();
+      await db.collection("erros-esfinge").add({
+        erro: _modalMsg, registrado: indicado || "", base: "", ferramenta: "", como: "", dicas: "",
+        importadoDaConsulta: true,
+        solucoes: [{ id: _uid(), solucao, indicadoPor: indicado || "Anônimo", dataIndicacao: new Date().toISOString(), versao: 1 }],
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      fecharModalSolucao();
+      const t = document.createElement("div");
+      t.style.cssText = "position:fixed;bottom:24px;right:24px;background:#15803d;color:#fff;padding:10px 18px;border-radius:8px;font-size:.83rem;font-weight:600;z-index:300;box-shadow:0 4px 14px rgba(0,0,0,.2);";
+      t.textContent = "✅ Solução cadastrada com sucesso!";
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 3000);
+    } catch (err) {
+      alert("Erro ao salvar: " + err.message);
+      btn.disabled = false; btn.textContent = "💾 Salvar solução rápida";
+    }
+  }
+
+  /* ══════════════════════════════════════════════
      INIT
   ══════════════════════════════════════════════ */
   restaurarCredenciais();
+  iniciarFirebaseConsulta();
   document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("senha").addEventListener("keydown", e => { if (e.key==="Enter") autenticar(); });
     document.getElementById("numeroLote").addEventListener("keydown", e => { if (e.key==="Enter") consultarLote(); });
+
+    // Modal: botões
+    document.getElementById("solm-close").addEventListener("click", fecharModalSolucao);
+    document.getElementById("modal-solucao").addEventListener("click", e => { if (e.target === document.getElementById("modal-solucao")) fecharModalSolucao(); });
+    document.getElementById("solm-btn-salvar").addEventListener("click", salvarSolucaoRapida);
   });
 </script>
 </body>
