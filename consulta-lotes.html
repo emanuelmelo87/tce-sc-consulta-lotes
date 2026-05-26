@@ -7,305 +7,169 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: #f0f2f5;
-      min-height: 100vh;
-      color: #1a1a2e;
-    }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f2f5; min-height: 100vh; color: #1a1a2e; }
 
-    /* ── Topbar ── */
-    .topbar {
-      background: #1a3a6b;
-      color: #fff;
-      padding: 14px 24px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 0.9rem;
-    }
-    .topbar a { color: rgba(255,255,255,.7); text-decoration: none; font-size: 0.82rem; }
+    /* Topbar */
+    .topbar { background: #1a3a6b; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 12px; font-size: .9rem; }
+    .topbar a { color: rgba(255,255,255,.7); text-decoration: none; font-size: .82rem; }
     .topbar a:hover { color: #fff; }
-    .topbar-sep { color: rgba(255,255,255,.35); margin: 0 6px; }
+    .topbar-sep { color: rgba(255,255,255,.3); margin: 0 5px; }
     .topbar-title { font-weight: 700; }
 
-    /* ── Layout principal ── */
-    .main {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 28px 20px 48px;
-    }
+    /* Layout */
+    .main { max-width: 1200px; margin: 0 auto; padding: 24px 20px 56px; }
 
-    /* ── Cards de formulário ── */
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,.07);
-      padding: 24px 28px;
-      margin-bottom: 18px;
-    }
-    .card h2 {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: #1a3a6b;
-      margin-bottom: 16px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #eef0f4;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .step-badge {
-      background: #1a3a6b; color: #fff;
-      border-radius: 50%;
-      width: 20px; height: 20px;
-      display: inline-flex; align-items: center; justify-content: center;
-      font-size: 0.7rem; font-weight: 700; flex-shrink: 0;
-    }
+    /* Cards formulário */
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.07); padding: 22px 26px; margin-bottom: 16px; }
+    .card h2 { font-size: .92rem; font-weight: 700; color: #1a3a6b; margin-bottom: 14px; padding-bottom: 9px; border-bottom: 1px solid #eef0f4; display: flex; align-items: center; gap: 7px; }
+    .step-badge { background: #1a3a6b; color: #fff; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 700; flex-shrink: 0; }
+    .saved-badge { font-size: .68rem; background: #e6f4ea; color: #1e7e34; padding: 2px 8px; border-radius: 99px; font-weight: 600; margin-left: auto; }
 
     .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .field { margin-bottom: 12px; }
-    label { display: block; font-size: 0.75rem; font-weight: 700; color: #555;
-            margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
-    input, select {
-      width: 100%; padding: 8px 11px;
-      border: 1.5px solid #dde2ea; border-radius: 7px;
-      font-size: 0.9rem; color: #1a1a2e; background: #fafbfc;
-      transition: border-color .2s;
-    }
+    label { display: block; font-size: .72rem; font-weight: 700; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+    input, select { width: 100%; padding: 8px 11px; border: 1.5px solid #dde2ea; border-radius: 7px; font-size: .9rem; color: #1a1a2e; background: #fafbfc; transition: border-color .2s; }
     input:focus, select:focus { outline: none; border-color: #1a3a6b; background: #fff; }
 
-    button.btn-primary {
-      width: 100%; padding: 10px;
-      background: #1a3a6b; color: #fff;
-      border: none; border-radius: 8px;
-      font-size: 0.9rem; font-weight: 700;
-      cursor: pointer; margin-top: 4px;
-      transition: background .2s;
-    }
-    button.btn-primary:hover { background: #15316a; }
-    button.btn-primary:disabled { background: #9ab; cursor: not-allowed; }
+    .btn-primary { width: 100%; padding: 10px; background: #1a3a6b; color: #fff; border: none; border-radius: 8px; font-size: .9rem; font-weight: 700; cursor: pointer; margin-top: 4px; transition: background .2s; }
+    .btn-primary:hover { background: #15316a; }
+    .btn-primary:disabled { background: #9ab; cursor: not-allowed; }
 
-    .status-bar {
-      display: none; align-items: center; gap: 8px;
-      padding: 8px 12px; border-radius: 7px;
-      font-size: 0.82rem; margin-top: 10px;
-    }
+    .status-bar { display: none; align-items: center; gap: 8px; padding: 7px 11px; border-radius: 7px; font-size: .82rem; margin-top: 9px; }
     .status-bar.ok   { background: #e6f4ea; color: #1e7e34; display: flex; }
     .status-bar.erro { background: #fdecea; color: #c0392b; display: flex; }
 
-    /* ── Resumo ── */
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-      gap: 10px; margin-bottom: 0;
-    }
-    .summary-item {
-      background: #f4f6fb; border-radius: 8px; padding: 10px 14px;
-    }
-    .summary-item .s-label { font-size: 0.68rem; color: #888; margin-bottom: 3px; text-transform: uppercase; letter-spacing: .04em; }
-    .summary-item .s-value { font-size: 0.9rem; font-weight: 700; }
-
-    .badge { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; }
+    /* Resumo */
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 9px; }
+    .summary-item { background: #f4f6fb; border-radius: 8px; padding: 9px 13px; }
+    .summary-item .s-label { font-size: .68rem; color: #888; margin-bottom: 3px; text-transform: uppercase; letter-spacing: .04em; }
+    .summary-item .s-value { font-size: .88rem; font-weight: 700; }
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: .74rem; font-weight: 700; }
     .badge-sucesso { background: #d4edda; color: #155724; }
     .badge-erro    { background: #f8d7da; color: #721c24; }
     .badge-info    { background: #cce5ff; color: #004085; }
 
-    /* ── Explorador de Erros ── */
-    #erros-section { display: none; }
+    /* ── Barra de modos ── */
+    .view-bar {
+      display: flex; align-items: center; gap: 8px;
+      background: #fff; border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.07);
+      padding: 12px 18px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .view-bar-label { font-size: .75rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .05em; margin-right: 4px; }
+    .view-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+    .view-tab {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 13px; border-radius: 7px; border: 1.5px solid #e2e8f0;
+      background: #f8fafc; color: #555; font-size: .8rem; font-weight: 600;
+      cursor: pointer; transition: .15s; white-space: nowrap;
+    }
+    .view-tab:hover { border-color: #1a3a6b; color: #1a3a6b; background: #eef2fb; }
+    .view-tab.active { background: #1a3a6b; color: #fff; border-color: #1a3a6b; }
+    .view-tab .tab-icon { font-size: .9rem; }
 
-    .explorer-wrap {
-      display: flex;
-      gap: 16px;
-      align-items: flex-start;
-    }
+    .view-bar-actions { margin-left: auto; display: flex; gap: 6px; }
+    .btn-sm-outline { background: #f1f5f9; border: none; border-radius: 6px; padding: 6px 12px; font-size: .75rem; font-weight: 700; color: #374151; cursor: pointer; }
+    .btn-sm-outline:hover { background: #e2e8f0; }
 
-    .explorer-main {
-      flex: 1;
-      min-width: 0;
-      transition: flex .25s;
-    }
-
-    /* Painel lateral */
-    .side-panel {
-      width: 0; overflow: hidden;
-      transition: width .25s ease;
-      flex-shrink: 0;
-    }
-    .side-panel.open {
-      width: 380px;
-    }
-    .side-panel-inner {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 2px 14px rgba(0,0,0,.10);
-      width: 380px;
-      max-height: 70vh;
-      display: flex; flex-direction: column;
-      overflow: hidden;
-    }
-    .panel-header {
-      background: #1a3a6b;
-      color: #fff;
+    /* ────────────────── MODO LISTA ────────────────── */
+    .erro-lista-item {
+      background: #fff; border-radius: 10px;
+      box-shadow: 0 1px 6px rgba(0,0,0,.06);
+      border-left: 4px solid #e74c3c;
       padding: 14px 16px;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-    .panel-header .ph-field { font-size: 0.72rem; opacity: .75; margin-bottom: 3px; }
-    .panel-header .ph-value { font-size: 0.95rem; font-weight: 700; word-break: break-all; }
-    .panel-header .ph-count { font-size: 0.75rem; opacity: .8; margin-top: 3px; }
-    .panel-close {
-      background: none; border: none; color: #fff; font-size: 1.3rem;
-      cursor: pointer; line-height: 1; padding: 0 2px; flex-shrink: 0;
-      opacity: .8;
-    }
-    .panel-close:hover { opacity: 1; }
-    .panel-body {
-      overflow-y: auto;
-      padding: 14px;
-      flex: 1;
-    }
-
-    .panel-record {
-      background: #f8fafc;
-      border-radius: 8px;
-      padding: 12px 14px;
       margin-bottom: 10px;
-      border-left: 3px solid #1a3a6b;
-      font-size: 0.8rem;
-      line-height: 1.8;
     }
-    .panel-record:last-child { margin-bottom: 0; }
+    .eli-msg { font-size: .85rem; font-weight: 700; color: #c0392b; margin-bottom: 8px; }
+    .eli-fields { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+    .eli-field { font-size: .78rem; color: #555; }
+    .eli-field strong { color: #1a1a2e; }
+
+    /* ────────────────── MODO EXPLORADOR WIKI ────────────────── */
+    .explorer-wrap { display: flex; gap: 14px; align-items: flex-start; }
+    .explorer-main { flex: 1; min-width: 0; }
+    .side-panel { width: 0; overflow: hidden; transition: width .25s ease; flex-shrink: 0; }
+    .side-panel.open { width: 370px; }
+    .side-panel-inner { background: #fff; border-radius: 12px; box-shadow: 0 2px 14px rgba(0,0,0,.10); width: 370px; max-height: 70vh; display: flex; flex-direction: column; overflow: hidden; }
+    .panel-header { background: #1a3a6b; color: #fff; padding: 13px 15px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; flex-shrink: 0; }
+    .panel-header .ph-field { font-size: .7rem; opacity: .75; margin-bottom: 2px; }
+    .panel-header .ph-value { font-size: .9rem; font-weight: 700; word-break: break-all; }
+    .panel-header .ph-count { font-size: .72rem; opacity: .8; margin-top: 2px; }
+    .panel-close { background: none; border: none; color: #fff; font-size: 1.2rem; cursor: pointer; line-height: 1; padding: 0 2px; opacity: .8; flex-shrink: 0; }
+    .panel-close:hover { opacity: 1; }
+    .panel-body { overflow-y: auto; padding: 12px; flex: 1; }
+    .panel-record { background: #f8fafc; border-radius: 7px; padding: 10px 12px; margin-bottom: 8px; border-left: 3px solid #1a3a6b; font-size: .78rem; line-height: 1.8; }
     .pr-field { color: #888; }
     .pr-value { color: #1a1a2e; font-weight: 600; }
     .pr-value.highlight { color: #1a3a6b; background: #dbeafe; border-radius: 3px; padding: 0 3px; }
 
-    /* Grupo de erro */
-    .error-group { margin-bottom: 16px; }
-
-    .group-header {
-      display: flex; align-items: center; gap: 10px;
-      background: #fff5f5;
-      border: 1px solid #fecaca;
-      border-radius: 10px 10px 0 0;
-      padding: 12px 16px;
-      cursor: pointer;
-      user-select: none;
-    }
+    .error-group { margin-bottom: 14px; }
+    .group-header { display: flex; align-items: center; gap: 9px; background: #fff5f5; border: 1px solid #fecaca; border-radius: 10px 10px 0 0; padding: 11px 15px; cursor: pointer; user-select: none; }
     .group-header:hover { background: #fef2f2; }
     .group-header.collapsed { border-radius: 10px; }
-
-    .gh-icon { font-size: 1rem; }
-    .gh-msg { flex: 1; font-size: 0.85rem; font-weight: 700; color: #991b1b; }
-    .gh-count {
-      background: #fee2e2; color: #991b1b;
-      border-radius: 99px; padding: 2px 10px;
-      font-size: 0.73rem; font-weight: 700; white-space: nowrap;
-    }
-    .gh-toggle { color: #991b1b; font-size: 0.8rem; }
-
-    /* Tabela de erros */
-    .error-table-wrap {
-      overflow-x: auto;
-      border: 1px solid #fecaca;
-      border-top: none;
-      border-radius: 0 0 10px 10px;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-    .error-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.77rem;
-      white-space: nowrap;
-    }
-    .error-table thead th {
-      background: #1a3a6b;
-      color: #fff;
-      padding: 8px 12px;
-      font-size: 0.7rem;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-      font-weight: 700;
-      position: sticky; top: 0;
-      white-space: nowrap;
-    }
+    .gh-icon { font-size: .95rem; }
+    .gh-msg { flex: 1; font-size: .83rem; font-weight: 700; color: #991b1b; }
+    .gh-count { background: #fee2e2; color: #991b1b; border-radius: 99px; padding: 2px 9px; font-size: .7rem; font-weight: 700; white-space: nowrap; }
+    .gh-toggle { color: #991b1b; font-size: .78rem; }
+    .error-table-wrap { overflow-x: auto; border: 1px solid #fecaca; border-top: none; border-radius: 0 0 10px 10px; max-height: 380px; overflow-y: auto; }
+    .error-table { width: 100%; border-collapse: collapse; font-size: .75rem; white-space: nowrap; }
+    .error-table thead th { background: #1a3a6b; color: #fff; padding: 7px 11px; font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; position: sticky; top: 0; }
     .error-table tbody tr { border-bottom: 1px solid #fef2f2; }
     .error-table tbody tr:hover { background: #fff5f5; }
-    .error-table tbody td { padding: 7px 12px; color: #374151; }
-
-    /* Link wiki */
-    .val-link {
-      color: #1a3a6b;
-      text-decoration: none;
-      border-bottom: 1px dashed #93c5fd;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: none;
-      border-left: none; border-top: none; border-right: none;
-      padding: 0;
-      font-size: inherit;
-      font-family: inherit;
-    }
+    .error-table tbody td { padding: 6px 11px; color: #374151; }
+    .val-link { color: #1a3a6b; text-decoration: none; border-bottom: 1px dashed #93c5fd; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; background: none; border-left: none; border-top: none; border-right: none; padding: 0; font-size: inherit; font-family: inherit; }
     .val-link:hover { color: #1e40af; border-bottom-color: #1a3a6b; }
-    .val-link.repeated {
-      color: #0f4c8a;
-      font-weight: 600;
-      border-bottom-style: solid;
-    }
-    .val-link.active {
-      background: #dbeafe;
-      border-radius: 3px;
-      padding: 0 3px;
-      border-bottom: 2px solid #1a3a6b;
-    }
-    .rep-badge {
-      background: #1a3a6b; color: #fff;
-      border-radius: 99px; font-size: 0.62rem; font-weight: 700;
-      padding: 1px 5px; line-height: 1.4;
-    }
+    .val-link.repeated { color: #0f4c8a; font-weight: 600; border-bottom-style: solid; }
+    .val-link.active { background: #dbeafe; border-radius: 3px; padding: 0 3px; border-bottom: 2px solid #1a3a6b; }
+    .rep-badge { background: #1a3a6b; color: #fff; border-radius: 99px; font-size: .6rem; font-weight: 700; padding: 1px 5px; line-height: 1.4; }
 
-    /* JSON expandível */
-    details.json-details { margin-top: 14px; }
-    details.json-details summary {
-      cursor: pointer; font-size: 0.78rem; color: #888;
-      padding: 6px 0; user-select: none;
-    }
-    details.json-details summary:hover { color: #1a3a6b; }
-    pre.json-pre {
-      background: #1e1e2e; color: #cdd6f4;
-      padding: 14px; border-radius: 8px;
-      font-size: 0.75rem; overflow-x: auto;
-      line-height: 1.5; max-height: 360px; overflow-y: auto;
-      margin-top: 8px;
-    }
+    /* ────────────────── MODO AGRUPADO ────────────────── */
+    .group-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+    .group-bar label { text-transform: uppercase; font-size: .72rem; font-weight: 700; color: #888; letter-spacing: .04em; white-space: nowrap; }
+    .group-bar select { width: auto; font-size: .85rem; }
 
-    .btn-copy {
-      background: #e8f0fe; color: #1a3a6b; border: none;
-      border-radius: 6px; padding: 5px 12px;
-      font-size: 0.75rem; font-weight: 700; cursor: pointer;
-    }
+    .agrupado-group { background: #fff; border-radius: 10px; box-shadow: 0 1px 6px rgba(0,0,0,.06); margin-bottom: 10px; overflow: hidden; }
+    .ag-header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; user-select: none; border-left: 4px solid #1a3a6b; }
+    .ag-header:hover { background: #f8fafc; }
+    .ag-valor { font-size: .9rem; font-weight: 700; color: #1a1a2e; flex: 1; }
+    .ag-count { background: #e8f0fe; color: #1a3a6b; border-radius: 99px; padding: 2px 10px; font-size: .72rem; font-weight: 700; }
+    .ag-toggle { color: #9ca3af; font-size: .8rem; }
+    .ag-body { display: none; border-top: 1px solid #f1f5f9; }
+    .ag-body.open { display: block; }
+    .ag-row { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 9px 16px; border-bottom: 1px solid #f8fafc; font-size: .78rem; }
+    .ag-row:last-child { border-bottom: none; }
+    .ag-row-field { color: #888; }
+    .ag-row-field strong { color: #1a1a2e; }
+
+    /* ────────────────── MODO ESTATÍSTICAS ────────────────── */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+    .stat-card { background: #fff; border-radius: 11px; box-shadow: 0 1px 6px rgba(0,0,0,.06); padding: 16px 18px; }
+    .stat-card-title { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: #888; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+    .stat-total { font-size: .68rem; color: #aaa; font-weight: 400; }
+    .stat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+    .stat-row:last-child { margin-bottom: 0; }
+    .stat-label { font-size: .75rem; color: #374151; width: 140px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; }
+    .stat-bar-wrap { flex: 1; background: #f1f5f9; border-radius: 99px; height: 8px; overflow: hidden; }
+    .stat-bar { height: 100%; border-radius: 99px; background: #1a3a6b; transition: width .5s ease; }
+    .stat-count { font-size: .72rem; font-weight: 700; color: #1a3a6b; width: 24px; text-align: right; flex-shrink: 0; }
+    .stat-more { font-size: .7rem; color: #aaa; margin-top: 8px; text-align: center; }
+
+    /* JSON */
+    details.json-det { margin-top: 12px; }
+    details.json-det summary { cursor: pointer; font-size: .77rem; color: #888; padding: 5px 0; user-select: none; }
+    details.json-det summary:hover { color: #1a3a6b; }
+    pre.json-pre { background: #1e1e2e; color: #cdd6f4; padding: 13px; border-radius: 8px; font-size: .74rem; overflow-x: auto; line-height: 1.5; max-height: 360px; overflow-y: auto; margin-top: 7px; }
+
+    .result-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .result-topbar h2 { font-size: .95rem; font-weight: 700; color: #1a3a6b; }
+    .btn-copy { background: #e8f0fe; color: #1a3a6b; border: none; border-radius: 6px; padding: 5px 11px; font-size: .74rem; font-weight: 700; cursor: pointer; }
     .btn-copy:hover { background: #d0e0fc; }
 
-    .result-topbar {
-      display: flex; align-items: center;
-      justify-content: space-between; margin-bottom: 14px;
-    }
-    .result-topbar h2 { font-size: 1rem; font-weight: 700; color: #1a3a6b; }
-
-    .spinner {
-      display: inline-block; width: 13px; height: 13px;
-      border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
-      border-radius: 50%; animation: spin .6s linear infinite;
-    }
+    .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Responsivo */
     @media (max-width: 700px) {
       .row-2 { grid-template-columns: 1fr; }
       .side-panel.open { width: 100%; }
@@ -326,19 +190,22 @@
 
   <!-- Passo 1: Credenciais -->
   <div class="card">
-    <h2><span class="step-badge">1</span> Credenciais de Acesso</h2>
+    <h2>
+      <span class="step-badge">1</span> Credenciais de Acesso
+      <span class="saved-badge" id="saved-badge" style="display:none">✓ Dados salvos</span>
+    </h2>
     <div class="row-2">
       <div class="field">
         <label>Código UG</label>
-        <input id="codigoUg" type="text" placeholder="ex: 12300">
+        <input id="codigoUg" type="text" placeholder="ex: 12300" oninput="salvarCredenciais()">
       </div>
       <div class="field">
         <label>Código de Acesso (CPF)</label>
-        <input id="codigoAcesso" type="text" placeholder="ex: 07460949906">
+        <input id="codigoAcesso" type="text" placeholder="ex: 07460949906" oninput="salvarCredenciais()">
       </div>
     </div>
     <div class="field">
-      <label>Senha</label>
+      <label>Senha <span style="font-size:.65rem;color:#aaa;font-weight:400;text-transform:none">(não armazenada)</span></label>
       <input id="senha" type="password" placeholder="Senha do e-Sfinge  (123456 = testes)">
     </div>
     <button class="btn-primary" id="btn-auth" onclick="autenticar()">Autenticar</button>
@@ -365,69 +232,122 @@
     <div id="status-consulta" class="status-bar"></div>
   </div>
 
-  <!-- Resultado: resumo -->
+  <!-- Resumo -->
   <div class="card" id="resumo-card" style="display:none">
     <div class="result-topbar">
       <h2>Resumo do Lote</h2>
       <button class="btn-copy" onclick="copiarJson()">Copiar JSON</button>
     </div>
     <div id="summary-grid" class="summary-grid"></div>
-    <details class="json-details" style="margin-top:14px">
+    <details class="json-det" style="margin-top:12px">
       <summary>JSON completo</summary>
       <pre class="json-pre" id="json-output"></pre>
     </details>
   </div>
 
-  <!-- Resultado: explorador de erros -->
-  <div id="erros-section">
-    <div class="card" style="padding-bottom:8px">
-      <div class="result-topbar" style="margin-bottom:0">
-        <h2 id="erros-title">Erros de Negócio</h2>
-        <button class="btn-copy" onclick="exportarErrosCsv()">Exportar CSV</button>
-      </div>
+  <!-- Barra de modos de visualização -->
+  <div class="view-bar" id="view-bar" style="display:none">
+    <span class="view-bar-label">Visualizar como</span>
+    <div class="view-tabs">
+      <button class="view-tab" id="tab-lista"      onclick="setModo('lista')"      title="Cards simples — um por erro">
+        <span class="tab-icon">📋</span> Lista
+      </button>
+      <button class="view-tab active" id="tab-wiki" onclick="setModo('wiki')"      title="Tabela com links cruzados e painel lateral">
+        <span class="tab-icon">🔍</span> Explorador
+      </button>
+      <button class="view-tab" id="tab-agrupado"   onclick="setModo('agrupado')"  title="Agrupe erros pelo campo que preferir">
+        <span class="tab-icon">🗂</span> Agrupado
+      </button>
+      <button class="view-tab" id="tab-stats"      onclick="setModo('stats')"     title="Frequência dos valores por campo">
+        <span class="tab-icon">📊</span> Estatísticas
+      </button>
     </div>
-
-    <div class="explorer-wrap">
-      <div class="explorer-main" id="explorer-main"></div>
-
-      <!-- Painel lateral wiki -->
-      <div class="side-panel" id="side-panel">
-        <div class="side-panel-inner">
-          <div class="panel-header">
-            <div>
-              <div class="ph-field" id="ph-field"></div>
-              <div class="ph-value" id="ph-value"></div>
-              <div class="ph-count" id="ph-count"></div>
-            </div>
-            <button class="panel-close" onclick="fecharPainel()">×</button>
-          </div>
-          <div class="panel-body" id="panel-body"></div>
-        </div>
-      </div>
+    <div class="view-bar-actions">
+      <button class="btn-sm-outline" onclick="exportarErrosCsv()">⬇ CSV</button>
     </div>
   </div>
 
+  <!-- Container dos erros -->
+  <div id="erros-container"></div>
+
 </div><!-- /main -->
 
+<!-- Painel lateral (wiki) — fora do flow principal para poder expandir -->
+<div style="position:fixed; right:20px; top:80px; z-index:50; pointer-events:none" id="panel-fixed-wrap">
+  <div class="side-panel" id="side-panel" style="pointer-events:all">
+    <div class="side-panel-inner">
+      <div class="panel-header">
+        <div>
+          <div class="ph-field" id="ph-field"></div>
+          <div class="ph-value" id="ph-value"></div>
+          <div class="ph-count" id="ph-count"></div>
+        </div>
+        <button class="panel-close" onclick="fecharPainel()">×</button>
+      </div>
+      <div class="panel-body" id="panel-body"></div>
+    </div>
+  </div>
+</div>
+
 <script>
-  const URLS = {
-    producao: "https://api.virtual.tce.sc.gov.br",
-    testes:   "https://virtual.testing.tce.sc.gov.br",
+  /* ══════════════════════════════════════════════
+     CONFIG
+  ══════════════════════════════════════════════ */
+  const URLS = { producao: "https://api.virtual.tce.sc.gov.br", testes: "https://virtual.testing.tce.sc.gov.br" };
+  const LS_CRED = "tce-cred-v1";
+  const LABELS  = {
+    identificador:"ID", anoMes:"Ano/Mês", identificadorLote:"Lote",
+    numeroInscricaoImobiliaria:"Inscrição Imobiliária",
+    numeroMatriculaContribuinte:"Matrícula Contribuinte",
+    dataAlteracaoTitularidade:"Data Alteração",
+    tipoCondicaoImovelProprietario:"Tipo Condição",
+    identificadorUnidadeGestora:"UG",
+    identificadorINT_RemessaOnLine:"ID Remessa",
+    selecionado:"Selecionado",
   };
+  const PRIORIDADE = ["identificador","anoMes","identificadorLote",
+    "numeroInscricaoImobiliaria","numeroMatriculaContribuinte",
+    "dataAlteracaoTitularidade","tipoCondicaoImovelProprietario",
+    "identificadorUnidadeGestora","identificadorINT_RemessaOnLine","selecionado"];
 
   let token = null, baseUrl = null, dadosCompletos = null;
-  let campoAtivo = null, valorAtivo = null;
+  let modoAtual = "wiki";
+  let errosCache = [];
 
-  // ── Autenticação ──────────────────────────────────────────────────
-  async function autenticar() {
-    const btn = document.getElementById("btn-auth");
-    const status = document.getElementById("status-auth");
+  /* ══════════════════════════════════════════════
+     CREDENCIAIS — localStorage (sem senha)
+  ══════════════════════════════════════════════ */
+  function salvarCredenciais() {
     const ug = document.getElementById("codigoUg").value.trim();
+    const ac = document.getElementById("codigoAcesso").value.trim();
+    if (ug || ac) {
+      localStorage.setItem(LS_CRED, JSON.stringify({ ug, ac }));
+      document.getElementById("saved-badge").style.display = "";
+    }
+  }
+
+  function restaurarCredenciais() {
+    try {
+      const c = JSON.parse(localStorage.getItem(LS_CRED) || "{}");
+      if (c.ug) { document.getElementById("codigoUg").value = c.ug; }
+      if (c.ac) { document.getElementById("codigoAcesso").value = c.ac; }
+      if (c.ug || c.ac) document.getElementById("saved-badge").style.display = "";
+    } catch {}
+  }
+
+  /* ══════════════════════════════════════════════
+     AUTENTICAÇÃO
+  ══════════════════════════════════════════════ */
+  async function autenticar() {
+    const btn    = document.getElementById("btn-auth");
+    const status = document.getElementById("status-auth");
+    const ug     = document.getElementById("codigoUg").value.trim();
     const acesso = document.getElementById("codigoAcesso").value.trim();
-    const senha = document.getElementById("senha").value;
+    const senha  = document.getElementById("senha").value;
 
     if (!ug || !acesso || !senha) { mostrarStatus(status, "erro", "Preencha todos os campos."); return; }
     baseUrl = senha === "123456" ? URLS.testes : URLS.producao;
+    salvarCredenciais();
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Autenticando…';
@@ -437,45 +357,40 @@
     url.searchParams.set("codigoUg", ug);
     url.searchParams.set("descricaoEmpresaTI", "BETHA SISTEMAS LTDA");
     url.searchParams.set("descritivoSoftware", "PRESTAÇÃO DE CONTAS");
-
     try {
-      const resp = await fetch(url.toString(), {
-        method: "POST",
-        headers: { codigoAcesso: acesso, senha },
-      });
+      const resp = await fetch(url.toString(), { method: "POST", headers: { codigoAcesso: acesso, senha } });
       if (!resp.ok) { mostrarStatus(status, "erro", `Erro ${resp.status}`); return; }
       const data = await resp.json();
       token = data.chave;
       if (!token) { mostrarStatus(status, "erro", "Token não retornado."); return; }
       mostrarStatus(status, "ok", `✓ Autenticado — ${baseUrl}`);
       document.getElementById("btn-consultar").disabled = false;
-    } catch (e) {
-      mostrarStatus(status, "erro", `Erro: ${e.message}`);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Autenticar";
-    }
+    } catch (e) { mostrarStatus(status, "erro", `Erro: ${e.message}`); }
+    finally { btn.disabled = false; btn.textContent = "Autenticar"; }
   }
 
-  // ── Consulta de lote ──────────────────────────────────────────────
+  /* ══════════════════════════════════════════════
+     CONSULTA DE LOTE
+  ══════════════════════════════════════════════ */
   async function consultarLote() {
-    const btn = document.getElementById("btn-consultar");
+    const btn    = document.getElementById("btn-consultar");
     const status = document.getElementById("status-consulta");
     const modulo = document.getElementById("modulo").value;
-    const lote = document.getElementById("numeroLote").value.trim();
+    const lote   = document.getElementById("numeroLote").value.trim();
 
-    if (!lote) { mostrarStatus(status, "erro", "Informe o número do lote."); return; }
+    if (!lote)  { mostrarStatus(status, "erro", "Informe o número do lote."); return; }
     if (!token) { mostrarStatus(status, "erro", "Autentique primeiro."); return; }
 
     const paths = {
       tributario: `/esfingeonline/v5/tributario/consultarPorNumeroLote/${lote}`,
       notafiscal: `/esfingeonline/v5/notafiscal/consultarPorNumeroLote/${lote}`,
     };
-
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Consultando…';
     document.getElementById("resumo-card").style.display = "none";
-    document.getElementById("erros-section").style.display = "none";
+    document.getElementById("view-bar").style.display    = "none";
+    document.getElementById("erros-container").innerHTML = "";
+    fecharPainel();
     status.className = "status-bar";
 
     try {
@@ -489,51 +404,90 @@
       dadosCompletos = await resp.json();
       mostrarStatus(status, "ok", "Consulta concluída.");
       renderizarResultado(dadosCompletos);
-    } catch (e) {
-      mostrarStatus(status, "erro", `Erro: ${e.message}`);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = "Consultar";
-    }
+    } catch (e) { mostrarStatus(status, "erro", `Erro: ${e.message}`); }
+    finally { btn.disabled = false; btn.textContent = "Consultar"; }
   }
 
-  // ── Renderização ──────────────────────────────────────────────────
+  /* ══════════════════════════════════════════════
+     RENDERIZAÇÃO PRINCIPAL
+  ══════════════════════════════════════════════ */
   function renderizarResultado(data) {
     // Resumo
-    const resumoCard = document.getElementById("resumo-card");
     document.getElementById("json-output").textContent = JSON.stringify(data, null, 2);
-    const campos = extrairCamposResumo(data);
-    document.getElementById("summary-grid").innerHTML = campos.map(c =>
+    document.getElementById("summary-grid").innerHTML = extrairCamposResumo(data).map(c =>
       `<div class="summary-item"><div class="s-label">${c.label}</div><div class="s-value">${c.value}</div></div>`
     ).join("");
-    resumoCard.style.display = "block";
+    document.getElementById("resumo-card").style.display = "block";
 
     // Erros
-    const erros = data?.retornoErros?.erros || (Array.isArray(data?.erros) ? data.erros : []);
-    if (erros.length > 0) {
-      document.getElementById("erros-title").textContent = `Erros de Negócio — ${erros.length} ocorrência(s)`;
-      document.getElementById("erros-section").style.display = "block";
-      renderizarExplorador(erros);
+    errosCache = data?.retornoErros?.erros || (Array.isArray(data?.erros) ? data.erros : []);
+    if (errosCache.length > 0) {
+      document.getElementById("view-bar").style.display = "";
+      renderModo();
     }
-
-    resumoCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.getElementById("resumo-card").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  // ── Explorador Wiki ───────────────────────────────────────────────
-  function renderizarExplorador(erros) {
-    // 1. Agrupar por mensagem
-    const grupos = {};
-    erros.forEach(e => {
-      const key = e.mensagem || e.descricao || "Sem mensagem";
-      if (!grupos[key]) grupos[key] = [];
-      grupos[key].push(e.objetoErro || e);
+  /* ══════════════════════════════════════════════
+     CONTROLE DE MODOS
+  ══════════════════════════════════════════════ */
+  function setModo(modo) {
+    modoAtual = modo;
+    ["lista","wiki","agrupado","stats"].forEach(m => {
+      document.getElementById(`tab-${m}`).classList.toggle("active", m === modo);
     });
+    fecharPainel();
+    renderModo();
+  }
 
-    const container = document.getElementById("explorer-main");
-    container.innerHTML = "";
+  function renderModo() {
+    const c = document.getElementById("erros-container");
+    c.innerHTML = "";
+    if (modoAtual === "lista")     renderLista(errosCache, c);
+    else if (modoAtual === "wiki") renderWiki(errosCache, c);
+    else if (modoAtual === "agrupado") renderAgrupado(errosCache, c);
+    else if (modoAtual === "stats")    renderStats(errosCache, c);
+  }
 
-    Object.entries(grupos).forEach(([msg, registros], gi) => {
-      // 2. Construir índice: campo → valor → [registros]
+  /* ══════════════════════════════════════════════
+     MODO 1 — LISTA (clássico)
+  ══════════════════════════════════════════════ */
+  function renderLista(erros, container) {
+    const grupos = agruparPorMensagem(erros);
+    Object.entries(grupos).forEach(([msg, recs]) => {
+      const header = document.createElement("div");
+      header.style.cssText = "font-size:.82rem;font-weight:700;color:#991b1b;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:9px 14px;margin-bottom:8px;";
+      header.textContent = `⚠ ${recs.length} erro${recs.length>1?"s":""} — ${msg}`;
+      container.appendChild(header);
+
+      recs.forEach(rec => {
+        const obj = rec.objetoErro || rec;
+        const item = document.createElement("div");
+        item.className = "erro-lista-item";
+
+        const cols = ordenarColunas([...new Set(Object.keys(obj))]);
+        item.innerHTML = `<div class="eli-fields">${
+          cols.filter(c => obj[c] != null).map(c =>
+            `<span class="eli-field"><span style="color:#888">${labelCampo(c)}:</span> <strong>${escHtml(formatarValor(c, String(obj[c])))}</strong></span>`
+          ).join("")
+        }</div>`;
+        container.appendChild(item);
+      });
+    });
+  }
+
+  /* ══════════════════════════════════════════════
+     MODO 2 — EXPLORADOR WIKI
+  ══════════════════════════════════════════════ */
+  function renderWiki(erros, container) {
+    const grupos = agruparPorMensagem(erros);
+    const wrap   = document.createElement("div");
+    wrap.className = "explorer-main";
+
+    Object.entries(grupos).forEach(([msg, recs]) => {
+      const registros = recs.map(e => e.objetoErro || e);
+
+      // Índice campo→valor→[registros]
       const idx = {};
       registros.forEach(rec => {
         Object.entries(rec).forEach(([campo, val]) => {
@@ -544,67 +498,42 @@
         });
       });
 
-      // 3. Montar HTML do grupo
       const groupEl = document.createElement("div");
       groupEl.className = "error-group";
 
-      // Cabeçalho
       const header = document.createElement("div");
       header.className = "group-header";
-      header.innerHTML = `
-        <span class="gh-icon">⚠</span>
-        <span class="gh-msg">${escHtml(msg)}</span>
-        <span class="gh-count">${registros.length} registro${registros.length > 1 ? "s" : ""}</span>
-        <span class="gh-toggle">▾</span>
-      `;
+      header.innerHTML = `<span class="gh-icon">⚠</span><span class="gh-msg">${escHtml(msg)}</span>
+        <span class="gh-count">${registros.length} registro${registros.length>1?"s":""}</span>
+        <span class="gh-toggle">▾</span>`;
       header.addEventListener("click", () => {
-        const wrap = groupEl.querySelector(".error-table-wrap");
-        const collapsed = wrap.style.display === "none";
-        wrap.style.display = collapsed ? "" : "none";
+        const tw = groupEl.querySelector(".error-table-wrap");
+        const collapsed = tw.style.display === "none";
+        tw.style.display = collapsed ? "" : "none";
         header.classList.toggle("collapsed", !collapsed);
         header.querySelector(".gh-toggle").textContent = collapsed ? "▾" : "▸";
       });
 
-      // Colunas = campos do primeiro registro (mas ordem bonita primeiro)
-      const todosCampos = [...new Set(registros.flatMap(r => Object.keys(r)))];
-      const prioridade = ["identificador","anoMes","identificadorLote","numeroInscricaoImobiliaria",
-        "numeroMatriculaContribuinte","dataAlteracaoTitularidade","tipoCondicaoImovelProprietario",
-        "identificadorUnidadeGestora","identificadorINT_RemessaOnLine","selecionado"];
-      const colunas = [
-        ...prioridade.filter(c => todosCampos.includes(c)),
-        ...todosCampos.filter(c => !prioridade.includes(c)),
-      ];
-
-      // Tabela
+      const colunas = ordenarColunas([...new Set(registros.flatMap(r => Object.keys(r)))]);
       const tableWrap = document.createElement("div");
       tableWrap.className = "error-table-wrap";
 
       const table = document.createElement("table");
       table.className = "error-table";
+      table.innerHTML = `<thead><tr>${colunas.map(c => `<th title="${escHtml(c)}">${escHtml(labelCampo(c))}</th>`).join("")}</tr></thead>`;
 
-      // Thead
-      table.innerHTML = `<thead><tr>${colunas.map(c =>
-        `<th title="${escHtml(c)}">${escHtml(labelCampo(c))}</th>`
-      ).join("")}</tr></thead>`;
-
-      // Tbody
       const tbody = document.createElement("tbody");
       registros.forEach(rec => {
         const tr = document.createElement("tr");
         colunas.forEach(campo => {
-          const td = document.createElement("td");
+          const td  = document.createElement("td");
           const val = rec[campo] != null ? String(rec[campo]) : "—";
-          const ocorrencias = idx[campo]?.[val]?.length || 1;
-          const isRepetido = ocorrencias > 1;
-
+          const occ = idx[campo]?.[val]?.length || 1;
           const btn = document.createElement("button");
-          btn.className = "val-link" + (isRepetido ? " repeated" : "");
-          btn.title = `Filtrar por ${labelCampo(campo)} = ${val} (${ocorrencias} ocorrência${ocorrencias > 1 ? "s" : ""})`;
-          btn.innerHTML = escHtml(formatarValor(campo, val)) +
-            (isRepetido ? ` <span class="rep-badge">${ocorrencias}</span>` : "");
-          btn.addEventListener("click", () =>
-            abrirPainel(campo, val, idx[campo][val], colunas)
-          );
+          btn.className = "val-link" + (occ > 1 ? " repeated" : "");
+          btn.title = `Filtrar: ${labelCampo(campo)} = ${val} (${occ} ocorrência${occ>1?"s":""})`;
+          btn.innerHTML = escHtml(formatarValor(campo, val)) + (occ > 1 ? ` <span class="rep-badge">${occ}</span>` : "");
+          btn.addEventListener("click", () => abrirPainel(campo, val, idx[campo][val], colunas));
           td.appendChild(btn);
           tr.appendChild(td);
         });
@@ -615,34 +544,156 @@
       tableWrap.appendChild(table);
       groupEl.appendChild(header);
       groupEl.appendChild(tableWrap);
-      container.appendChild(groupEl);
+      wrap.appendChild(groupEl);
     });
+
+    container.appendChild(wrap);
   }
 
-  // ── Painel lateral ────────────────────────────────────────────────
-  function abrirPainel(campo, valor, registros, colunas) {
-    // Atualiza link ativo
-    document.querySelectorAll(".val-link.active").forEach(el => el.classList.remove("active"));
-    document.querySelectorAll(`.val-link[title*="${CSS.escape(campo)} = ${CSS.escape(valor)}"]`)
-      .forEach(el => el.classList.add("active"));
+  /* ══════════════════════════════════════════════
+     MODO 3 — AGRUPADO
+  ══════════════════════════════════════════════ */
+  function renderAgrupado(erros, container) {
+    const todos = erros.map(e => e.objetoErro || e);
+    const todosCampos = ordenarColunas([...new Set(todos.flatMap(r => Object.keys(r)))]);
 
-    campoAtivo = campo; valorAtivo = valor;
+    // Barra de seleção do campo de agrupamento
+    const bar = document.createElement("div");
+    bar.className = "group-bar";
+    const sel = document.createElement("select");
+    sel.style.cssText = "width:auto;font-size:.85rem;";
+    todosCampos.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c; opt.textContent = labelCampo(c);
+      if (c === "numeroMatriculaContribuinte") opt.selected = true;
+      sel.appendChild(opt);
+    });
+    bar.innerHTML = `<label>Agrupar por</label>`;
+    bar.appendChild(sel);
+    container.appendChild(bar);
+
+    const listEl = document.createElement("div");
+    container.appendChild(listEl);
+
+    function rebuild() {
+      listEl.innerHTML = "";
+      const campo = sel.value;
+      const grupos = {};
+      todos.forEach(rec => {
+        const v = rec[campo] != null ? formatarValor(campo, String(rec[campo])) : "—";
+        if (!grupos[v]) grupos[v] = [];
+        grupos[v].push(rec);
+      });
+
+      // Ordenar por contagem desc
+      const sorted = Object.entries(grupos).sort((a,b) => b[1].length - a[1].length);
+      const outrasColunas = todosCampos.filter(c => c !== campo);
+
+      sorted.forEach(([valor, recs]) => {
+        const g = document.createElement("div");
+        g.className = "agrupado-group";
+
+        const h = document.createElement("div");
+        h.className = "ag-header";
+        h.innerHTML = `<span class="ag-valor">${escHtml(valor)}</span>
+          <span class="ag-count">${recs.length} registro${recs.length>1?"s":""}</span>
+          <span class="ag-toggle">▸</span>`;
+
+        const body = document.createElement("div");
+        body.className = "ag-body";
+
+        recs.forEach(rec => {
+          const row = document.createElement("div");
+          row.className = "ag-row";
+          row.innerHTML = outrasColunas.filter(c => rec[c] != null).map(c =>
+            `<span class="ag-row-field"><span style="color:#aaa">${labelCampo(c)}:</span> <strong>${escHtml(formatarValor(c, String(rec[c])))}</strong></span>`
+          ).join("");
+          body.appendChild(row);
+        });
+
+        h.addEventListener("click", () => {
+          const open = body.classList.toggle("open");
+          h.querySelector(".ag-toggle").textContent = open ? "▾" : "▸";
+        });
+
+        g.appendChild(h);
+        g.appendChild(body);
+        listEl.appendChild(g);
+      });
+    }
+
+    sel.addEventListener("change", rebuild);
+    rebuild();
+  }
+
+  /* ══════════════════════════════════════════════
+     MODO 4 — ESTATÍSTICAS
+  ══════════════════════════════════════════════ */
+  function renderStats(erros, container) {
+    const todos = erros.map(e => e.objetoErro || e);
+    const todosCampos = ordenarColunas([...new Set(todos.flatMap(r => Object.keys(r)))]);
+
+    // Campos ignoráveis (muitos valores únicos / pouco sentido estatístico)
+    const ignorar = ["identificador", "identificadorINT_RemessaOnLine", "identificadorLote"];
+    const camposStat = todosCampos.filter(c => !ignorar.includes(c));
+
+    const grid = document.createElement("div");
+    grid.className = "stats-grid";
+
+    camposStat.forEach(campo => {
+      const contagem = {};
+      todos.forEach(rec => {
+        const v = rec[campo] != null ? formatarValor(campo, String(rec[campo])) : "—";
+        contagem[v] = (contagem[v] || 0) + 1;
+      });
+
+      const sorted = Object.entries(contagem).sort((a,b) => b[1] - a[1]);
+      const top    = sorted.slice(0, 8);
+      const maxVal = top[0]?.[1] || 1;
+      const total  = Object.keys(contagem).length;
+
+      const card = document.createElement("div");
+      card.className = "stat-card";
+      card.innerHTML = `
+        <div class="stat-card-title">
+          ${escHtml(labelCampo(campo))}
+          <span class="stat-total">${total} valor${total>1?"es":""} único${total>1?"s":""}</span>
+        </div>
+        ${top.map(([v, cnt]) => `
+          <div class="stat-row">
+            <span class="stat-label" title="${escHtml(v)}">${escHtml(v)}</span>
+            <div class="stat-bar-wrap">
+              <div class="stat-bar" style="width:${Math.round(cnt/maxVal*100)}%"></div>
+            </div>
+            <span class="stat-count">${cnt}</span>
+          </div>`).join("")}
+        ${sorted.length > 8 ? `<div class="stat-more">+${sorted.length - 8} outros valores</div>` : ""}
+      `;
+      grid.appendChild(card);
+    });
+
+    container.appendChild(grid);
+  }
+
+  /* ══════════════════════════════════════════════
+     PAINEL LATERAL (wiki)
+  ══════════════════════════════════════════════ */
+  function abrirPainel(campo, valor, registros, colunas) {
+    document.querySelectorAll(".val-link.active").forEach(el => el.classList.remove("active"));
+    document.querySelectorAll(".val-link").forEach(el => {
+      if (el.title.includes(`${campo} = ${valor}`)) el.classList.add("active");
+    });
 
     document.getElementById("ph-field").textContent = labelCampo(campo);
     document.getElementById("ph-value").textContent = valor;
-    document.getElementById("ph-count").textContent =
-      `${registros.length} registro${registros.length > 1 ? "s" : ""}`;
+    document.getElementById("ph-count").textContent = `${registros.length} registro${registros.length>1?"s":""}`;
 
-    const body = document.getElementById("panel-body");
-    body.innerHTML = registros.map(rec => {
-      const linhas = colunas
-        .filter(c => rec[c] != null)
-        .map(c => {
-          const v = formatarValor(c, String(rec[c]));
-          const isMatch = c === campo;
-          return `<span class="pr-field">${escHtml(labelCampo(c))}:</span> ` +
-                 `<span class="pr-value${isMatch ? " highlight" : ""}">${escHtml(v)}</span>`;
-        }).join(" &nbsp;·&nbsp; ");
+    document.getElementById("panel-body").innerHTML = registros.map(rec => {
+      const linhas = colunas.filter(c => rec[c] != null).map(c => {
+        const v = formatarValor(c, String(rec[c]));
+        return `<span class="pr-field">${escHtml(labelCampo(c))}:</span> ` +
+               `<span class="pr-value${c===campo?" highlight":""}">${escHtml(v)}</span>`;
+      }).join(" &nbsp;·&nbsp; ");
       return `<div class="panel-record">${linhas}</div>`;
     }).join("");
 
@@ -652,42 +703,56 @@
   function fecharPainel() {
     document.getElementById("side-panel").classList.remove("open");
     document.querySelectorAll(".val-link.active").forEach(el => el.classList.remove("active"));
-    campoAtivo = null; valorAtivo = null;
   }
 
-  // ── Exportar CSV ──────────────────────────────────────────────────
+  /* ══════════════════════════════════════════════
+     EXPORT CSV
+  ══════════════════════════════════════════════ */
   function exportarErrosCsv() {
     if (!dadosCompletos) return;
     const erros = dadosCompletos?.retornoErros?.erros || dadosCompletos?.erros || [];
     if (!erros.length) return;
-    const registros = erros.map(e => e.objetoErro || e);
-    const cols = [...new Set(registros.flatMap(r => Object.keys(r)))];
-    const linhas = [cols.join(";")];
-    registros.forEach(r => linhas.push(cols.map(c => `"${r[c] ?? ""}"`).join(";")));
-    const blob = new Blob([linhas.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const recs = erros.map(e => e.objetoErro || e);
+    const cols = [...new Set(recs.flatMap(r => Object.keys(r)))];
+    const linhas = [cols.join(";"), ...recs.map(r => cols.map(c => `"${r[c]??""}"` ).join(";"))];
     const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
+    a.href = URL.createObjectURL(new Blob([linhas.join("\n")], { type: "text/csv;charset=utf-8;" }));
     a.download = `erros_lote_${document.getElementById("numeroLote").value}.csv`;
     a.click();
   }
 
-  // ── Helpers ───────────────────────────────────────────────────────
+  /* ══════════════════════════════════════════════
+     HELPERS
+  ══════════════════════════════════════════════ */
+  function agruparPorMensagem(erros) {
+    const grupos = {};
+    erros.forEach(e => {
+      const key = e.mensagem || e.descricao || "Sem mensagem";
+      if (!grupos[key]) grupos[key] = [];
+      grupos[key].push(e);
+    });
+    return grupos;
+  }
+
+  function ordenarColunas(cols) {
+    return [...PRIORIDADE.filter(c => cols.includes(c)), ...cols.filter(c => !PRIORIDADE.includes(c))];
+  }
+
   function extrairCamposResumo(data) {
     const campos = [];
     const add = (l, v, badge) => {
       if (v == null) return;
       campos.push({ label: l, value: badge ? `<span class="badge badge-${badge}">${v}</span>` : String(v) });
     };
-    add("Situação",         data.situacao,       situacaoBadge(data.situacao));
-    add("Ano/Mês",          data.anoMes);
-    add("Nº Lote",          data.numeroLote ?? data.identificadorLote);
-    add("Nº Remessa",       data.numeroRemessa ?? data.idRemessaOnline ?? data.identificadorRemessaOnline);
-    add("UG",               data.identificadorUnidadeGestora ?? data.codigoUnidadeGestora);
-    add("Total registros",  data.quantidadeRegistros ?? data.retornoErros?.totalRegistros);
-    add("Total erros",      data.retornoErros?.totalErros ?? data.totalErros);
-    add("Cód. registro",    data.codigoRegistroInformacao);
-    if (campos.length === 0)
-      Object.entries(data).forEach(([k,v]) => { if (typeof v !== "object") add(k, v); });
+    add("Situação",        data.situacao,       situacaoBadge(data.situacao));
+    add("Ano/Mês",         data.anoMes);
+    add("Nº Lote",         data.numeroLote ?? data.identificadorLote);
+    add("Nº Remessa",      data.numeroRemessa ?? data.idRemessaOnline ?? data.identificadorRemessaOnline);
+    add("UG",              data.identificadorUnidadeGestora ?? data.codigoUnidadeGestora);
+    add("Total registros", data.quantidadeRegistros ?? data.retornoErros?.totalRegistros);
+    add("Total erros",     data.retornoErros?.totalErros ?? data.totalErros);
+    add("Cód. registro",   data.codigoRegistroInformacao);
+    if (!campos.length) Object.entries(data).forEach(([k,v]) => { if (typeof v !== "object") add(k,v); });
     return campos;
   }
 
@@ -698,39 +763,27 @@
     return "info";
   }
 
-  const LABELS = {
-    identificador: "ID", anoMes: "Ano/Mês", identificadorLote: "Lote",
-    numeroInscricaoImobiliaria: "Inscrição Imobiliária",
-    numeroMatriculaContribuinte: "Matrícula Contribuinte",
-    dataAlteracaoTitularidade: "Data Alteração Titularidade",
-    tipoCondicaoImovelProprietario: "Tipo Condição Imóvel",
-    identificadorUnidadeGestora: "UG",
-    identificadorINT_RemessaOnLine: "ID Remessa",
-    selecionado: "Selecionado",
-  };
   function labelCampo(c) { return LABELS[c] || c; }
 
   function formatarValor(campo, val) {
     if (campo.toLowerCase().includes("data") && val.includes("T")) {
-      try {
-        return new Date(val).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric" });
-      } catch { return val; }
+      try { return new Date(val).toLocaleDateString("pt-BR"); } catch {}
     }
-    if (val === "true") return "Sim";
+    if (val === "true")  return "Sim";
     if (val === "false") return "Não";
     return val;
   }
 
   function mostrarStatus(el, tipo, msg) { el.className = `status-bar ${tipo}`; el.textContent = msg; }
-  function copiarJson() {
-    navigator.clipboard.writeText(document.getElementById("json-output").textContent)
-      .then(() => alert("JSON copiado!"));
-  }
+  function copiarJson() { navigator.clipboard.writeText(document.getElementById("json-output").textContent).then(() => alert("JSON copiado!")); }
   function escHtml(s) {
     return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
   }
 
-  // Enter shortcuts
+  /* ══════════════════════════════════════════════
+     INIT
+  ══════════════════════════════════════════════ */
+  restaurarCredenciais();
   document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("senha").addEventListener("keydown", e => { if (e.key==="Enter") autenticar(); });
     document.getElementById("numeroLote").addEventListener("keydown", e => { if (e.key==="Enter") consultarLote(); });
