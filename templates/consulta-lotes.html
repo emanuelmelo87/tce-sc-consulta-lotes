@@ -549,6 +549,7 @@
     if (errosCache.length > 0) {
       document.getElementById("view-bar").style.display = "";
       renderModo();
+      setTimeout(anotarCabecalhos, 80); // anota badges de solução após render
     }
     document.getElementById("resumo-card").scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -563,6 +564,7 @@
     });
     fecharPainel();
     renderModo();
+    setTimeout(anotarCabecalhos, 80); // re-anota após troca de modo
   }
 
   function renderModo() {
@@ -938,9 +940,13 @@
 
   function anotarCabecalhos() {
     document.querySelectorAll(".sol-slot[data-msg]").forEach(slot => {
-      if (slot.dataset.anotado === "1") return;
       const msg = slot.getAttribute("data-msg");
       const match = buscarSolucao(msg);
+      // Evita re-render desnecessário se o estado não mudou
+      const estadoAtual = slot.dataset.estado || "";
+      const novoEstado  = match ? "encontrado" : "novo";
+      if (estadoAtual === novoEstado) return;
+      slot.dataset.estado = novoEstado;
       slot.innerHTML = match
         ? `<button class="sol-badge encontrado">✅ Ver solução</button>`
         : `<button class="sol-badge novo">📋 Cadastrar solução</button>`;
@@ -948,16 +954,10 @@
         e.stopPropagation();
         abrirModalSolucao(msg, match);
       });
-      slot.dataset.anotado = "1";
     });
   }
 
-  // Também anota quando novos modos são renderizados
-  const _renderModo = renderModo;
-  function renderModo() {
-    _renderModo();
-    setTimeout(anotarCabecalhos, 50); // aguarda DOM
-  }
+  // anotarCabecalhos é chamado via renderizarResultado e setModo (ver abaixo)
 
   /* ══════════════════════════════════════════════
      MODAL SOLUÇÃO
