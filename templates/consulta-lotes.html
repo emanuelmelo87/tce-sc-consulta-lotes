@@ -3,297 +3,411 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Consulta TCE/SC — e-Sfinge</title>
+  <title>Consulta de Lotes — e-Sfinge TCE/SC</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: 'Segoe UI', system-ui, sans-serif;
       background: #f0f2f5;
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 32px 16px;
       color: #1a1a2e;
     }
 
-    header {
-      margin-bottom: 28px;
-      text-align: center;
+    /* ── Topbar ── */
+    .topbar {
+      background: #1a3a6b;
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.9rem;
     }
-    header h1 { font-size: 1.4rem; font-weight: 700; color: #1a3a6b; }
-    header span { font-size: 0.85rem; color: #666; display: block; margin-top: 4px; }
+    .topbar a { color: rgba(255,255,255,.7); text-decoration: none; font-size: 0.82rem; }
+    .topbar a:hover { color: #fff; }
+    .topbar-sep { color: rgba(255,255,255,.35); margin: 0 6px; }
+    .topbar-title { font-weight: 700; }
 
+    /* ── Layout principal ── */
+    .main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    /* ── Cards de formulário ── */
     .card {
       background: #fff;
       border-radius: 12px;
-      box-shadow: 0 2px 12px rgba(0,0,0,.08);
-      padding: 28px 32px;
-      width: 100%;
-      max-width: 520px;
-      margin-bottom: 20px;
-    }
-
-    .card h2 {
-      font-size: 1rem;
-      font-weight: 600;
-      color: #1a3a6b;
+      box-shadow: 0 2px 10px rgba(0,0,0,.07);
+      padding: 24px 28px;
       margin-bottom: 18px;
+    }
+    .card h2 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1a3a6b;
+      margin-bottom: 16px;
       padding-bottom: 10px;
-      border-bottom: 1px solid #e8ecf0;
+      border-bottom: 1px solid #eef0f4;
       display: flex;
       align-items: center;
       gap: 8px;
     }
-
     .step-badge {
-      background: #1a3a6b;
-      color: #fff;
+      background: #1a3a6b; color: #fff;
       border-radius: 50%;
-      width: 22px; height: 22px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.75rem;
-      font-weight: 700;
-      flex-shrink: 0;
-    }
-
-    .field { margin-bottom: 14px; }
-    label {
-      display: block;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: #444;
-      margin-bottom: 5px;
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
-
-    input, select {
-      width: 100%;
-      padding: 9px 12px;
-      border: 1.5px solid #dde2ea;
-      border-radius: 7px;
-      font-size: 0.95rem;
-      color: #1a1a2e;
-      background: #fafbfc;
-      transition: border-color .2s;
-    }
-    input:focus, select:focus {
-      outline: none;
-      border-color: #1a3a6b;
-      background: #fff;
+      width: 20px; height: 20px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.7rem; font-weight: 700; flex-shrink: 0;
     }
 
     .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
-    button {
-      width: 100%;
-      padding: 11px;
-      background: #1a3a6b;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 6px;
-      transition: background .2s, transform .1s;
+    .field { margin-bottom: 12px; }
+    label { display: block; font-size: 0.75rem; font-weight: 700; color: #555;
+            margin-bottom: 4px; text-transform: uppercase; letter-spacing: .04em; }
+    input, select {
+      width: 100%; padding: 8px 11px;
+      border: 1.5px solid #dde2ea; border-radius: 7px;
+      font-size: 0.9rem; color: #1a1a2e; background: #fafbfc;
+      transition: border-color .2s;
     }
-    button:hover { background: #15316a; }
-    button:active { transform: scale(0.98); }
-    button:disabled { background: #9ab; cursor: not-allowed; }
+    input:focus, select:focus { outline: none; border-color: #1a3a6b; background: #fff; }
+
+    button.btn-primary {
+      width: 100%; padding: 10px;
+      background: #1a3a6b; color: #fff;
+      border: none; border-radius: 8px;
+      font-size: 0.9rem; font-weight: 700;
+      cursor: pointer; margin-top: 4px;
+      transition: background .2s;
+    }
+    button.btn-primary:hover { background: #15316a; }
+    button.btn-primary:disabled { background: #9ab; cursor: not-allowed; }
 
     .status-bar {
-      display: none;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      border-radius: 7px;
-      font-size: 0.85rem;
-      margin-top: 12px;
+      display: none; align-items: center; gap: 8px;
+      padding: 8px 12px; border-radius: 7px;
+      font-size: 0.82rem; margin-top: 10px;
     }
     .status-bar.ok   { background: #e6f4ea; color: #1e7e34; display: flex; }
     .status-bar.erro { background: #fdecea; color: #c0392b; display: flex; }
-    .status-bar.info { background: #e8f0fe; color: #1a3a6b; display: flex; }
 
-    #resultado-card { display: none; max-width: 760px; }
-
-    .result-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 14px;
-    }
-    .result-header h2 { border: none; padding: 0; margin: 0; }
-
-    .btn-copy {
-      width: auto;
-      padding: 6px 14px;
-      font-size: 0.8rem;
-      margin: 0;
-      background: #e8f0fe;
-      color: #1a3a6b;
-      border-radius: 6px;
-    }
-    .btn-copy:hover { background: #d0e0fc; }
-
+    /* ── Resumo ── */
     .summary-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 10px;
-      margin-bottom: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: 10px; margin-bottom: 0;
     }
     .summary-item {
-      background: #f4f6fb;
-      border-radius: 8px;
-      padding: 10px 14px;
+      background: #f4f6fb; border-radius: 8px; padding: 10px 14px;
     }
-    .summary-item .label { font-size: 0.72rem; color: #888; margin-bottom: 3px; }
-    .summary-item .value { font-size: 0.95rem; font-weight: 600; color: #1a1a2e; }
+    .summary-item .s-label { font-size: 0.68rem; color: #888; margin-bottom: 3px; text-transform: uppercase; letter-spacing: .04em; }
+    .summary-item .s-value { font-size: 0.9rem; font-weight: 700; }
 
-    .badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 99px;
-      font-size: 0.78rem;
-      font-weight: 700;
-    }
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; }
     .badge-sucesso { background: #d4edda; color: #155724; }
     .badge-erro    { background: #f8d7da; color: #721c24; }
     .badge-info    { background: #cce5ff; color: #004085; }
 
-    details { margin-top: 14px; }
-    summary {
-      cursor: pointer;
-      font-size: 0.82rem;
-      color: #666;
-      user-select: none;
-      padding: 6px 0;
-    }
-    summary:hover { color: #1a3a6b; }
+    /* ── Explorador de Erros ── */
+    #erros-section { display: none; }
 
-    pre {
-      background: #1e1e2e;
-      color: #cdd6f4;
-      padding: 16px;
-      border-radius: 8px;
-      font-size: 0.78rem;
-      overflow-x: auto;
-      line-height: 1.5;
-      max-height: 420px;
+    .explorer-wrap {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .explorer-main {
+      flex: 1;
+      min-width: 0;
+      transition: flex .25s;
+    }
+
+    /* Painel lateral */
+    .side-panel {
+      width: 0; overflow: hidden;
+      transition: width .25s ease;
+      flex-shrink: 0;
+    }
+    .side-panel.open {
+      width: 380px;
+    }
+    .side-panel-inner {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 14px rgba(0,0,0,.10);
+      width: 380px;
+      max-height: 70vh;
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+    .panel-header {
+      background: #1a3a6b;
+      color: #fff;
+      padding: 14px 16px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .panel-header .ph-field { font-size: 0.72rem; opacity: .75; margin-bottom: 3px; }
+    .panel-header .ph-value { font-size: 0.95rem; font-weight: 700; word-break: break-all; }
+    .panel-header .ph-count { font-size: 0.75rem; opacity: .8; margin-top: 3px; }
+    .panel-close {
+      background: none; border: none; color: #fff; font-size: 1.3rem;
+      cursor: pointer; line-height: 1; padding: 0 2px; flex-shrink: 0;
+      opacity: .8;
+    }
+    .panel-close:hover { opacity: 1; }
+    .panel-body {
       overflow-y: auto;
+      padding: 14px;
+      flex: 1;
+    }
+
+    .panel-record {
+      background: #f8fafc;
+      border-radius: 8px;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      border-left: 3px solid #1a3a6b;
+      font-size: 0.8rem;
+      line-height: 1.8;
+    }
+    .panel-record:last-child { margin-bottom: 0; }
+    .pr-field { color: #888; }
+    .pr-value { color: #1a1a2e; font-weight: 600; }
+    .pr-value.highlight { color: #1a3a6b; background: #dbeafe; border-radius: 3px; padding: 0 3px; }
+
+    /* Grupo de erro */
+    .error-group { margin-bottom: 16px; }
+
+    .group-header {
+      display: flex; align-items: center; gap: 10px;
+      background: #fff5f5;
+      border: 1px solid #fecaca;
+      border-radius: 10px 10px 0 0;
+      padding: 12px 16px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .group-header:hover { background: #fef2f2; }
+    .group-header.collapsed { border-radius: 10px; }
+
+    .gh-icon { font-size: 1rem; }
+    .gh-msg { flex: 1; font-size: 0.85rem; font-weight: 700; color: #991b1b; }
+    .gh-count {
+      background: #fee2e2; color: #991b1b;
+      border-radius: 99px; padding: 2px 10px;
+      font-size: 0.73rem; font-weight: 700; white-space: nowrap;
+    }
+    .gh-toggle { color: #991b1b; font-size: 0.8rem; }
+
+    /* Tabela de erros */
+    .error-table-wrap {
+      overflow-x: auto;
+      border: 1px solid #fecaca;
+      border-top: none;
+      border-radius: 0 0 10px 10px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .error-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.77rem;
+      white-space: nowrap;
+    }
+    .error-table thead th {
+      background: #1a3a6b;
+      color: #fff;
+      padding: 8px 12px;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      font-weight: 700;
+      position: sticky; top: 0;
+      white-space: nowrap;
+    }
+    .error-table tbody tr { border-bottom: 1px solid #fef2f2; }
+    .error-table tbody tr:hover { background: #fff5f5; }
+    .error-table tbody td { padding: 7px 12px; color: #374151; }
+
+    /* Link wiki */
+    .val-link {
+      color: #1a3a6b;
+      text-decoration: none;
+      border-bottom: 1px dashed #93c5fd;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: none;
+      border-left: none; border-top: none; border-right: none;
+      padding: 0;
+      font-size: inherit;
+      font-family: inherit;
+    }
+    .val-link:hover { color: #1e40af; border-bottom-color: #1a3a6b; }
+    .val-link.repeated {
+      color: #0f4c8a;
+      font-weight: 600;
+      border-bottom-style: solid;
+    }
+    .val-link.active {
+      background: #dbeafe;
+      border-radius: 3px;
+      padding: 0 3px;
+      border-bottom: 2px solid #1a3a6b;
+    }
+    .rep-badge {
+      background: #1a3a6b; color: #fff;
+      border-radius: 99px; font-size: 0.62rem; font-weight: 700;
+      padding: 1px 5px; line-height: 1.4;
+    }
+
+    /* JSON expandível */
+    details.json-details { margin-top: 14px; }
+    details.json-details summary {
+      cursor: pointer; font-size: 0.78rem; color: #888;
+      padding: 6px 0; user-select: none;
+    }
+    details.json-details summary:hover { color: #1a3a6b; }
+    pre.json-pre {
+      background: #1e1e2e; color: #cdd6f4;
+      padding: 14px; border-radius: 8px;
+      font-size: 0.75rem; overflow-x: auto;
+      line-height: 1.5; max-height: 360px; overflow-y: auto;
       margin-top: 8px;
     }
 
-    .erros-list { margin-top: 10px; }
-    .erro-item {
-      background: #fff5f5;
-      border-left: 3px solid #e74c3c;
-      padding: 10px 14px;
-      border-radius: 0 6px 6px 0;
-      margin-bottom: 8px;
-      font-size: 0.85rem;
+    .btn-copy {
+      background: #e8f0fe; color: #1a3a6b; border: none;
+      border-radius: 6px; padding: 5px 12px;
+      font-size: 0.75rem; font-weight: 700; cursor: pointer;
     }
-    .erro-item .msg  { color: #c0392b; font-weight: 600; margin-bottom: 4px; }
-    .erro-item .meta { color: #666; font-size: 0.78rem; }
+    .btn-copy:hover { background: #d0e0fc; }
+
+    .result-topbar {
+      display: flex; align-items: center;
+      justify-content: space-between; margin-bottom: 14px;
+    }
+    .result-topbar h2 { font-size: 1rem; font-weight: 700; color: #1a3a6b; }
 
     .spinner {
-      display: inline-block;
-      width: 14px; height: 14px;
-      border: 2px solid rgba(255,255,255,.4);
-      border-top-color: #fff;
-      border-radius: 50%;
-      animation: spin .6s linear infinite;
+      display: inline-block; width: 13px; height: 13px;
+      border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+      border-radius: 50%; animation: spin .6s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .cors-warn {
-      background: #fff8e1;
-      border: 1px solid #ffe082;
-      border-radius: 8px;
-      padding: 12px 16px;
-      font-size: 0.82rem;
-      color: #5d4037;
-      margin-top: 12px;
-      display: none;
+    /* Responsivo */
+    @media (max-width: 700px) {
+      .row-2 { grid-template-columns: 1fr; }
+      .side-panel.open { width: 100%; }
+      .explorer-wrap { flex-direction: column; }
+      .side-panel-inner { width: 100%; }
     }
   </style>
 </head>
 <body>
 
-<header>
-  <h1>e-Sfinge TCE/SC</h1>
-  <span>Consulta de Lotes — Módulo Tributário</span>
-</header>
-
-<!-- Passo 1: Credenciais -->
-<div class="card">
-  <h2><span class="step-badge">1</span> Credenciais de Acesso</h2>
-
-  <div class="row-2">
-    <div class="field">
-      <label>Código UG</label>
-      <input id="codigoUg" type="text" placeholder="ex: 12300">
-    </div>
-    <div class="field">
-      <label>Código de Acesso (CPF)</label>
-      <input id="codigoAcesso" type="text" placeholder="ex: 07460949906">
-    </div>
-  </div>
-
-  <div class="field">
-    <label>Senha</label>
-    <input id="senha" type="password" placeholder="Senha do e-Sfinge  (123456 = testes)">
-  </div>
-
-  <button id="btn-auth" onclick="autenticar()">Autenticar</button>
-  <div id="status-auth" class="status-bar"></div>
-  <div id="cors-warn" class="cors-warn">
-    ⚠ <strong>Erro de CORS:</strong> o navegador bloqueou a requisição direta à API do TCE.
-    Para usar esta aplicação via browser, rode localmente:<br><br>
-    <code>git clone https://github.com/emanuelmelo87/tce-sc-consulta-lotes<br>
-    pip install -r requirements.txt &amp;&amp; python app.py</code>
-  </div>
+<div class="topbar">
+  <a href="index.html">← Central de Apoio</a>
+  <span class="topbar-sep">/</span>
+  <span class="topbar-title">Consulta de Lotes</span>
 </div>
 
-<!-- Passo 2: Consulta -->
-<div class="card">
-  <h2><span class="step-badge">2</span> Consultar Lote</h2>
+<div class="main">
 
-  <div class="row-2">
-    <div class="field">
-      <label>Módulo</label>
-      <select id="modulo">
-        <option value="tributario">Tributário V5</option>
-        <option value="notafiscal">Notas Fiscais V5</option>
-      </select>
+  <!-- Passo 1: Credenciais -->
+  <div class="card">
+    <h2><span class="step-badge">1</span> Credenciais de Acesso</h2>
+    <div class="row-2">
+      <div class="field">
+        <label>Código UG</label>
+        <input id="codigoUg" type="text" placeholder="ex: 12300">
+      </div>
+      <div class="field">
+        <label>Código de Acesso (CPF)</label>
+        <input id="codigoAcesso" type="text" placeholder="ex: 07460949906">
+      </div>
     </div>
     <div class="field">
-      <label>Número do Lote</label>
-      <input id="numeroLote" type="number" placeholder="ex: 2171233">
+      <label>Senha</label>
+      <input id="senha" type="password" placeholder="Senha do e-Sfinge  (123456 = testes)">
+    </div>
+    <button class="btn-primary" id="btn-auth" onclick="autenticar()">Autenticar</button>
+    <div id="status-auth" class="status-bar"></div>
+  </div>
+
+  <!-- Passo 2: Consulta -->
+  <div class="card">
+    <h2><span class="step-badge">2</span> Consultar Lote</h2>
+    <div class="row-2">
+      <div class="field">
+        <label>Módulo</label>
+        <select id="modulo">
+          <option value="tributario">Tributário V5</option>
+          <option value="notafiscal">Notas Fiscais V5</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Número do Lote</label>
+        <input id="numeroLote" type="number" placeholder="ex: 2171233">
+      </div>
+    </div>
+    <button class="btn-primary" id="btn-consultar" onclick="consultarLote()" disabled>Consultar</button>
+    <div id="status-consulta" class="status-bar"></div>
+  </div>
+
+  <!-- Resultado: resumo -->
+  <div class="card" id="resumo-card" style="display:none">
+    <div class="result-topbar">
+      <h2>Resumo do Lote</h2>
+      <button class="btn-copy" onclick="copiarJson()">Copiar JSON</button>
+    </div>
+    <div id="summary-grid" class="summary-grid"></div>
+    <details class="json-details" style="margin-top:14px">
+      <summary>JSON completo</summary>
+      <pre class="json-pre" id="json-output"></pre>
+    </details>
+  </div>
+
+  <!-- Resultado: explorador de erros -->
+  <div id="erros-section">
+    <div class="card" style="padding-bottom:8px">
+      <div class="result-topbar" style="margin-bottom:0">
+        <h2 id="erros-title">Erros de Negócio</h2>
+        <button class="btn-copy" onclick="exportarErrosCsv()">Exportar CSV</button>
+      </div>
+    </div>
+
+    <div class="explorer-wrap">
+      <div class="explorer-main" id="explorer-main"></div>
+
+      <!-- Painel lateral wiki -->
+      <div class="side-panel" id="side-panel">
+        <div class="side-panel-inner">
+          <div class="panel-header">
+            <div>
+              <div class="ph-field" id="ph-field"></div>
+              <div class="ph-value" id="ph-value"></div>
+              <div class="ph-count" id="ph-count"></div>
+            </div>
+            <button class="panel-close" onclick="fecharPainel()">×</button>
+          </div>
+          <div class="panel-body" id="panel-body"></div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <button id="btn-consultar" onclick="consultarLote()" disabled>Consultar</button>
-  <div id="status-consulta" class="status-bar"></div>
-</div>
-
-<!-- Resultado -->
-<div class="card" id="resultado-card">
-  <div class="result-header">
-    <h2><span class="step-badge">✓</span> Resultado</h2>
-    <button class="btn-copy" onclick="copiarJson()">Copiar JSON</button>
-  </div>
-  <div id="summary-grid" class="summary-grid"></div>
-  <div id="erros-container"></div>
-  <details>
-    <summary>JSON completo</summary>
-    <pre id="json-output"></pre>
-  </details>
-</div>
+</div><!-- /main -->
 
 <script>
   const URLS = {
@@ -301,30 +415,22 @@
     testes:   "https://virtual.testing.tce.sc.gov.br",
   };
 
-  let token    = null;
-  let baseUrl  = null;
-  let jsonData = null;
+  let token = null, baseUrl = null, dadosCompletos = null;
+  let campoAtivo = null, valorAtivo = null;
 
-  // ── Autenticação ────────────────────────────────────────────────────
+  // ── Autenticação ──────────────────────────────────────────────────
   async function autenticar() {
-    const btn    = document.getElementById("btn-auth");
+    const btn = document.getElementById("btn-auth");
     const status = document.getElementById("status-auth");
-    const warn   = document.getElementById("cors-warn");
-
-    const ug     = document.getElementById("codigoUg").value.trim();
+    const ug = document.getElementById("codigoUg").value.trim();
     const acesso = document.getElementById("codigoAcesso").value.trim();
-    const senha  = document.getElementById("senha").value;
+    const senha = document.getElementById("senha").value;
 
-    if (!ug || !acesso || !senha) {
-      mostrarStatus(status, "erro", "Preencha todos os campos.");
-      return;
-    }
-
+    if (!ug || !acesso || !senha) { mostrarStatus(status, "erro", "Preencha todos os campos."); return; }
     baseUrl = senha === "123456" ? URLS.testes : URLS.producao;
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Autenticando…';
-    warn.style.display = "none";
     status.className = "status-bar";
 
     const url = new URL(`${baseUrl}/esfingeonline/autenticacao/login`);
@@ -335,44 +441,28 @@
     try {
       const resp = await fetch(url.toString(), {
         method: "POST",
-        headers: { "codigoAcesso": acesso, "senha": senha },
+        headers: { codigoAcesso: acesso, senha },
       });
-
-      if (!resp.ok) {
-        const txt = await resp.text();
-        mostrarStatus(status, "erro", `Erro ${resp.status}: ${txt.slice(0, 120)}`);
-        return;
-      }
-
+      if (!resp.ok) { mostrarStatus(status, "erro", `Erro ${resp.status}`); return; }
       const data = await resp.json();
       token = data.chave;
-      if (!token) {
-        mostrarStatus(status, "erro", "Token não retornado: " + JSON.stringify(data).slice(0, 100));
-        return;
-      }
-
+      if (!token) { mostrarStatus(status, "erro", "Token não retornado."); return; }
       mostrarStatus(status, "ok", `✓ Autenticado — ${baseUrl}`);
       document.getElementById("btn-consultar").disabled = false;
-
     } catch (e) {
-      if (e instanceof TypeError && e.message.toLowerCase().includes("fetch")) {
-        warn.style.display = "block";
-        mostrarStatus(status, "erro", "Bloqueado pelo navegador (CORS). Veja aviso abaixo.");
-      } else {
-        mostrarStatus(status, "erro", `Erro: ${e.message}`);
-      }
+      mostrarStatus(status, "erro", `Erro: ${e.message}`);
     } finally {
       btn.disabled = false;
       btn.textContent = "Autenticar";
     }
   }
 
-  // ── Consulta de lote ────────────────────────────────────────────────
+  // ── Consulta de lote ──────────────────────────────────────────────
   async function consultarLote() {
-    const btn    = document.getElementById("btn-consultar");
+    const btn = document.getElementById("btn-consultar");
     const status = document.getElementById("status-consulta");
     const modulo = document.getElementById("modulo").value;
-    const lote   = document.getElementById("numeroLote").value.trim();
+    const lote = document.getElementById("numeroLote").value.trim();
 
     if (!lote) { mostrarStatus(status, "erro", "Informe o número do lote."); return; }
     if (!token) { mostrarStatus(status, "erro", "Autentique primeiro."); return; }
@@ -384,26 +474,21 @@
 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Consultando…';
-    document.getElementById("resultado-card").style.display = "none";
+    document.getElementById("resumo-card").style.display = "none";
+    document.getElementById("erros-section").style.display = "none";
     status.className = "status-bar";
 
     try {
       const resp = await fetch(`${baseUrl}${paths[modulo]}`, {
-        headers: { "AUTH_TOKEN": token, "Content-Type": "application/json" },
+        headers: { AUTH_TOKEN: token, "Content-Type": "application/json" },
       });
-
       if (!resp.ok) {
-        let detalhe = "";
-        try { detalhe = JSON.stringify(await resp.json()).slice(0, 150); }
-        catch { detalhe = await resp.text().then(t => t.slice(0, 150)); }
-        mostrarStatus(status, "erro", `Erro ${resp.status}: ${detalhe}`);
-        return;
+        let d = ""; try { d = JSON.stringify(await resp.json()).slice(0,150); } catch { d = (await resp.text()).slice(0,150); }
+        mostrarStatus(status, "erro", `Erro ${resp.status}: ${d}`); return;
       }
-
-      jsonData = await resp.json();
+      dadosCompletos = await resp.json();
       mostrarStatus(status, "ok", "Consulta concluída.");
-      renderizarResultado(jsonData, modulo);
-
+      renderizarResultado(dadosCompletos);
     } catch (e) {
       mostrarStatus(status, "erro", `Erro: ${e.message}`);
     } finally {
@@ -412,76 +497,243 @@
     }
   }
 
-  // ── Renderização ────────────────────────────────────────────────────
-  function renderizarResultado(data, modulo) {
-    const resCard = document.getElementById("resultado-card");
+  // ── Renderização ──────────────────────────────────────────────────
+  function renderizarResultado(data) {
+    // Resumo
+    const resumoCard = document.getElementById("resumo-card");
     document.getElementById("json-output").textContent = JSON.stringify(data, null, 2);
-
-    const campos = extrairCamposResumo(data, modulo);
+    const campos = extrairCamposResumo(data);
     document.getElementById("summary-grid").innerHTML = campos.map(c =>
-      `<div class="summary-item"><div class="label">${c.label}</div><div class="value">${c.value}</div></div>`
+      `<div class="summary-item"><div class="s-label">${c.label}</div><div class="s-value">${c.value}</div></div>`
     ).join("");
+    resumoCard.style.display = "block";
 
-    const errosEl = document.getElementById("erros-container");
-    errosEl.innerHTML = "";
+    // Erros
     const erros = data?.retornoErros?.erros || (Array.isArray(data?.erros) ? data.erros : []);
     if (erros.length > 0) {
-      errosEl.innerHTML = `<div style="font-size:.85rem;font-weight:600;color:#c0392b;margin-bottom:8px;">⚠ ${erros.length} erro(s) de negócio</div>`;
-      erros.slice(0, 20).forEach(e => {
-        const msg  = e.mensagem || e.descricao || JSON.stringify(e);
-        const meta = e.objetoErro
-          ? Object.entries(e.objetoErro).map(([k,v]) => `<b>${k}</b>: ${v}`).join(" · ")
-          : "";
-        errosEl.innerHTML += `<div class="erro-item"><div class="msg">${msg}</div>${meta ? `<div class="meta">${meta}</div>` : ""}</div>`;
-      });
-      if (erros.length > 20)
-        errosEl.innerHTML += `<p style="font-size:.8rem;color:#888">…e mais ${erros.length - 20} erros. Veja o JSON completo.</p>`;
+      document.getElementById("erros-title").textContent = `Erros de Negócio — ${erros.length} ocorrência(s)`;
+      document.getElementById("erros-section").style.display = "block";
+      renderizarExplorador(erros);
     }
 
-    resCard.style.display = "block";
-    resCard.scrollIntoView({ behavior: "smooth", block: "start" });
+    resumoCard.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  function extrairCamposResumo(data, modulo) {
+  // ── Explorador Wiki ───────────────────────────────────────────────
+  function renderizarExplorador(erros) {
+    // 1. Agrupar por mensagem
+    const grupos = {};
+    erros.forEach(e => {
+      const key = e.mensagem || e.descricao || "Sem mensagem";
+      if (!grupos[key]) grupos[key] = [];
+      grupos[key].push(e.objetoErro || e);
+    });
+
+    const container = document.getElementById("explorer-main");
+    container.innerHTML = "";
+
+    Object.entries(grupos).forEach(([msg, registros], gi) => {
+      // 2. Construir índice: campo → valor → [registros]
+      const idx = {};
+      registros.forEach(rec => {
+        Object.entries(rec).forEach(([campo, val]) => {
+          const v = val != null ? String(val) : "";
+          if (!idx[campo]) idx[campo] = {};
+          if (!idx[campo][v]) idx[campo][v] = [];
+          idx[campo][v].push(rec);
+        });
+      });
+
+      // 3. Montar HTML do grupo
+      const groupEl = document.createElement("div");
+      groupEl.className = "error-group";
+
+      // Cabeçalho
+      const header = document.createElement("div");
+      header.className = "group-header";
+      header.innerHTML = `
+        <span class="gh-icon">⚠</span>
+        <span class="gh-msg">${escHtml(msg)}</span>
+        <span class="gh-count">${registros.length} registro${registros.length > 1 ? "s" : ""}</span>
+        <span class="gh-toggle">▾</span>
+      `;
+      header.addEventListener("click", () => {
+        const wrap = groupEl.querySelector(".error-table-wrap");
+        const collapsed = wrap.style.display === "none";
+        wrap.style.display = collapsed ? "" : "none";
+        header.classList.toggle("collapsed", !collapsed);
+        header.querySelector(".gh-toggle").textContent = collapsed ? "▾" : "▸";
+      });
+
+      // Colunas = campos do primeiro registro (mas ordem bonita primeiro)
+      const todosCampos = [...new Set(registros.flatMap(r => Object.keys(r)))];
+      const prioridade = ["identificador","anoMes","identificadorLote","numeroInscricaoImobiliaria",
+        "numeroMatriculaContribuinte","dataAlteracaoTitularidade","tipoCondicaoImovelProprietario",
+        "identificadorUnidadeGestora","identificadorINT_RemessaOnLine","selecionado"];
+      const colunas = [
+        ...prioridade.filter(c => todosCampos.includes(c)),
+        ...todosCampos.filter(c => !prioridade.includes(c)),
+      ];
+
+      // Tabela
+      const tableWrap = document.createElement("div");
+      tableWrap.className = "error-table-wrap";
+
+      const table = document.createElement("table");
+      table.className = "error-table";
+
+      // Thead
+      table.innerHTML = `<thead><tr>${colunas.map(c =>
+        `<th title="${escHtml(c)}">${escHtml(labelCampo(c))}</th>`
+      ).join("")}</tr></thead>`;
+
+      // Tbody
+      const tbody = document.createElement("tbody");
+      registros.forEach(rec => {
+        const tr = document.createElement("tr");
+        colunas.forEach(campo => {
+          const td = document.createElement("td");
+          const val = rec[campo] != null ? String(rec[campo]) : "—";
+          const ocorrencias = idx[campo]?.[val]?.length || 1;
+          const isRepetido = ocorrencias > 1;
+
+          const btn = document.createElement("button");
+          btn.className = "val-link" + (isRepetido ? " repeated" : "");
+          btn.title = `Filtrar por ${labelCampo(campo)} = ${val} (${ocorrencias} ocorrência${ocorrencias > 1 ? "s" : ""})`;
+          btn.innerHTML = escHtml(formatarValor(campo, val)) +
+            (isRepetido ? ` <span class="rep-badge">${ocorrencias}</span>` : "");
+          btn.addEventListener("click", () =>
+            abrirPainel(campo, val, idx[campo][val], colunas)
+          );
+          td.appendChild(btn);
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+      groupEl.appendChild(header);
+      groupEl.appendChild(tableWrap);
+      container.appendChild(groupEl);
+    });
+  }
+
+  // ── Painel lateral ────────────────────────────────────────────────
+  function abrirPainel(campo, valor, registros, colunas) {
+    // Atualiza link ativo
+    document.querySelectorAll(".val-link.active").forEach(el => el.classList.remove("active"));
+    document.querySelectorAll(`.val-link[title*="${CSS.escape(campo)} = ${CSS.escape(valor)}"]`)
+      .forEach(el => el.classList.add("active"));
+
+    campoAtivo = campo; valorAtivo = valor;
+
+    document.getElementById("ph-field").textContent = labelCampo(campo);
+    document.getElementById("ph-value").textContent = valor;
+    document.getElementById("ph-count").textContent =
+      `${registros.length} registro${registros.length > 1 ? "s" : ""}`;
+
+    const body = document.getElementById("panel-body");
+    body.innerHTML = registros.map(rec => {
+      const linhas = colunas
+        .filter(c => rec[c] != null)
+        .map(c => {
+          const v = formatarValor(c, String(rec[c]));
+          const isMatch = c === campo;
+          return `<span class="pr-field">${escHtml(labelCampo(c))}:</span> ` +
+                 `<span class="pr-value${isMatch ? " highlight" : ""}">${escHtml(v)}</span>`;
+        }).join(" &nbsp;·&nbsp; ");
+      return `<div class="panel-record">${linhas}</div>`;
+    }).join("");
+
+    document.getElementById("side-panel").classList.add("open");
+  }
+
+  function fecharPainel() {
+    document.getElementById("side-panel").classList.remove("open");
+    document.querySelectorAll(".val-link.active").forEach(el => el.classList.remove("active"));
+    campoAtivo = null; valorAtivo = null;
+  }
+
+  // ── Exportar CSV ──────────────────────────────────────────────────
+  function exportarErrosCsv() {
+    if (!dadosCompletos) return;
+    const erros = dadosCompletos?.retornoErros?.erros || dadosCompletos?.erros || [];
+    if (!erros.length) return;
+    const registros = erros.map(e => e.objetoErro || e);
+    const cols = [...new Set(registros.flatMap(r => Object.keys(r)))];
+    const linhas = [cols.join(";")];
+    registros.forEach(r => linhas.push(cols.map(c => `"${r[c] ?? ""}"`).join(";")));
+    const blob = new Blob([linhas.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `erros_lote_${document.getElementById("numeroLote").value}.csv`;
+    a.click();
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────
+  function extrairCamposResumo(data) {
     const campos = [];
-    const add = (label, value, badge) => {
-      if (value == null) return;
-      const v = badge ? `<span class="badge badge-${badge}">${value}</span>` : String(value);
-      campos.push({ label, value: v });
+    const add = (l, v, badge) => {
+      if (v == null) return;
+      campos.push({ label: l, value: badge ? `<span class="badge badge-${badge}">${v}</span>` : String(v) });
     };
-    add("Nº Remessa",      data.numeroRemessa ?? data.idRemessaOnline ?? data.identificadorRemessaOnline);
-    add("Situação",        data.situacao,       situacaoBadge(data.situacao));
-    add("Ano/Mês",         data.anoMes);
-    add("Nº Lote",         data.numeroLote ?? data.identificadorLote);
-    add("UG",              data.identificadorUnidadeGestora ?? data.codigoUnidadeGestora);
-    add("Total registros", data.quantidadeRegistros ?? data.retornoErros?.totalRegistros);
-    add("Total erros",     data.retornoErros?.totalErros ?? data.totalErros);
-    add("Cód. registro",   data.codigoRegistroInformacao);
+    add("Situação",         data.situacao,       situacaoBadge(data.situacao));
+    add("Ano/Mês",          data.anoMes);
+    add("Nº Lote",          data.numeroLote ?? data.identificadorLote);
+    add("Nº Remessa",       data.numeroRemessa ?? data.idRemessaOnline ?? data.identificadorRemessaOnline);
+    add("UG",               data.identificadorUnidadeGestora ?? data.codigoUnidadeGestora);
+    add("Total registros",  data.quantidadeRegistros ?? data.retornoErros?.totalRegistros);
+    add("Total erros",      data.retornoErros?.totalErros ?? data.totalErros);
+    add("Cód. registro",    data.codigoRegistroInformacao);
     if (campos.length === 0)
       Object.entries(data).forEach(([k,v]) => { if (typeof v !== "object") add(k, v); });
     return campos;
   }
 
-  function situacaoBadge(sit) {
-    if (!sit) return null;
-    if (sit.includes("SUCESSO"))  return "sucesso";
-    if (sit.includes("ERRO") || sit.includes("ABORTADO")) return "erro";
+  function situacaoBadge(s) {
+    if (!s) return null;
+    if (s.includes("SUCESSO")) return "sucesso";
+    if (s.includes("ERRO") || s.includes("ABORTADO")) return "erro";
     return "info";
   }
 
-  function mostrarStatus(el, tipo, msg) {
-    el.className = `status-bar ${tipo}`;
-    el.textContent = msg;
+  const LABELS = {
+    identificador: "ID", anoMes: "Ano/Mês", identificadorLote: "Lote",
+    numeroInscricaoImobiliaria: "Inscrição Imobiliária",
+    numeroMatriculaContribuinte: "Matrícula Contribuinte",
+    dataAlteracaoTitularidade: "Data Alteração Titularidade",
+    tipoCondicaoImovelProprietario: "Tipo Condição Imóvel",
+    identificadorUnidadeGestora: "UG",
+    identificadorINT_RemessaOnLine: "ID Remessa",
+    selecionado: "Selecionado",
+  };
+  function labelCampo(c) { return LABELS[c] || c; }
+
+  function formatarValor(campo, val) {
+    if (campo.toLowerCase().includes("data") && val.includes("T")) {
+      try {
+        return new Date(val).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric" });
+      } catch { return val; }
+    }
+    if (val === "true") return "Sim";
+    if (val === "false") return "Não";
+    return val;
   }
 
+  function mostrarStatus(el, tipo, msg) { el.className = `status-bar ${tipo}`; el.textContent = msg; }
   function copiarJson() {
     navigator.clipboard.writeText(document.getElementById("json-output").textContent)
       .then(() => alert("JSON copiado!"));
   }
+  function escHtml(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
 
+  // Enter shortcuts
   document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("numeroLote").addEventListener("keydown", e => { if (e.key === "Enter") consultarLote(); });
-    document.getElementById("senha").addEventListener("keydown", e => { if (e.key === "Enter") autenticar(); });
+    document.getElementById("senha").addEventListener("keydown", e => { if (e.key==="Enter") autenticar(); });
+    document.getElementById("numeroLote").addEventListener("keydown", e => { if (e.key==="Enter") consultarLote(); });
   });
 </script>
 </body>
