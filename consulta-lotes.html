@@ -118,7 +118,10 @@
     .gh-toggle { color: #991b1b; font-size: .78rem; }
     .error-table-wrap { overflow-x: auto; border: 1px solid #fecaca; border-top: none; border-radius: 0 0 10px 10px; max-height: 380px; overflow-y: auto; }
     .error-table { width: 100%; border-collapse: collapse; font-size: .75rem; white-space: nowrap; }
-    .error-table thead th { background: #1a3a6b; color: #fff; padding: 7px 11px; font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; position: sticky; top: 0; }
+    .error-table thead th { background: #1a3a6b; color: #fff; padding: 7px 11px; font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 700; position: sticky; top: 0; white-space: nowrap; }
+    .col-copy-btn { background: none; border: none; cursor: pointer; color: rgba(255,255,255,.55); font-size: .8rem; padding: 1px 4px; border-radius: 3px; margin-left: 4px; vertical-align: middle; transition: color .12s, background .12s; line-height: 1; }
+    .col-copy-btn:hover { color: #fff; background: rgba(255,255,255,.18); }
+    .col-copy-btn.copiado { color: #4ade80; }
     .error-table tbody tr { border-bottom: 1px solid #fef2f2; }
     .error-table tbody tr:hover { background: #fff5f5; }
     .error-table tbody td { padding: 6px 11px; color: #374151; }
@@ -649,7 +652,7 @@
 
       const table = document.createElement("table");
       table.className = "error-table";
-      table.innerHTML = `<thead><tr>${colunas.map(c => `<th title="${escHtml(c)}">${escHtml(labelCampo(c))}</th>`).join("")}</tr></thead>`;
+      table.innerHTML = `<thead><tr>${colunas.map(c => `<th title="${escHtml(c)}">${escHtml(labelCampo(c))}<button class="col-copy-btn" data-col="${escHtml(c)}" title="Copiar todos os valores desta coluna">⎘</button></th>`).join("")}</tr></thead>`;
 
       const tbody = document.createElement("tbody");
       registros.forEach(rec => {
@@ -670,6 +673,24 @@
       });
 
       table.appendChild(tbody);
+
+      // Botões de copiar coluna
+      table.querySelectorAll(".col-copy-btn").forEach(btn => {
+        btn.addEventListener("click", e => {
+          e.stopPropagation();
+          const campo = btn.dataset.col;
+          const valores = registros
+            .map(r => r[campo] != null ? formatarValor(campo, String(r[campo])) : "")
+            .filter(v => v && v !== "—")
+            .join(", ");
+          navigator.clipboard.writeText(valores).then(() => {
+            btn.classList.add("copiado");
+            btn.textContent = "✓";
+            setTimeout(() => { btn.classList.remove("copiado"); btn.textContent = "⎘"; }, 1800);
+          });
+        });
+      });
+
       tableWrap.appendChild(table);
       groupEl.appendChild(header);
       groupEl.appendChild(tableWrap);
