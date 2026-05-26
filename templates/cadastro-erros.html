@@ -662,7 +662,7 @@
   <a href="./">← Central</a>
   <span class="topbar-sep">›</span>
   <span class="topbar-title">Cadastro de Erros e Soluções</span>
-  <div class="topbar-right">
+  <div class="topbar-right" style="display:none">
     <div class="db-status">
       <div class="db-dot" id="db-dot"></div>
       <span id="db-txt">Aguardando...</span>
@@ -992,8 +992,11 @@ function iniciarListener() {
       if (primeiraVez && URL_ERRO_PARAM) verificarImportacao();
     },
     err => {
-      setStatus("error", "Erro ao carregar");
-      toast("Erro no Firestore: " + err.message, "err");
+      console.warn("Firestore:", err.code, err.message);
+      // Regras ainda não publicadas — orientar o usuário discretamente
+      if (err.code === "permission-denied") {
+        toast("⚠️ Acesso bloqueado — publique as regras no Firestore.", "err");
+      }
     }
   );
 }
