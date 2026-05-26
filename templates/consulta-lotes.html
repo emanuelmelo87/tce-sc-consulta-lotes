@@ -913,12 +913,21 @@
      FIREBASE — VERIFICAÇÃO DE SOLUÇÕES
   ══════════════════════════════════════════════ */
   const FB_LS = "fb-config-v1";
+  const FB_CONFIG_PADRAO = {
+    apiKey:            "AIzaSyCvvtlScjCLWTwiHa3hw9U1rEK-oYblcJQ",
+    authDomain:        "erros-esfinge.firebaseapp.com",
+    projectId:         "erros-esfinge",
+    storageBucket:     "erros-esfinge.firebasestorage.app",
+    messagingSenderId: "682442944427",
+    appId:             "1:682442944427:web:f748dc5027064696b52cee"
+  };
   let solucoesDB = [];
 
   function iniciarFirebaseConsulta() {
     try {
-      const cfg = JSON.parse(localStorage.getItem(FB_LS) || "null");
-      if (!cfg || !cfg.projectId) return;
+      let cfg;
+      try { cfg = JSON.parse(localStorage.getItem(FB_LS) || "null"); } catch {}
+      if (!cfg || !cfg.projectId) cfg = FB_CONFIG_PADRAO;
       if (!firebase.apps.length) firebase.initializeApp(cfg);
       const db = firebase.firestore();
       db.collection("erros-esfinge").onSnapshot(snap => {

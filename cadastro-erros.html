@@ -887,15 +887,25 @@ service cloud.firestore {
      JAVASCRIPT
 ════════════════════════════════════════════════ -->
 <script>
-// ─── Chave localStorage para config Firebase ─────────────────────────────
+// ─── Configuração Firebase ────────────────────────────────────────────────
 const FB_LS = "fb-config-v1";
+
+// Config padrão embutida — funciona para todos sem precisar configurar
+const FB_CONFIG_PADRAO = {
+  apiKey:            "AIzaSyCvvtlScjCLWTwiHa3hw9U1rEK-oYblcJQ",
+  authDomain:        "erros-esfinge.firebaseapp.com",
+  projectId:         "erros-esfinge",
+  storageBucket:     "erros-esfinge.firebasestorage.app",
+  messagingSenderId: "682442944427",
+  appId:             "1:682442944427:web:f748dc5027064696b52cee"
+};
 
 function lerConfig() {
   try {
     const s = JSON.parse(localStorage.getItem(FB_LS) || "null");
-    if (s && s.projectId && s.apiKey) return s;
+    if (s && s.projectId && s.apiKey) return s; // override manual tem prioridade
   } catch {}
-  return null;
+  return FB_CONFIG_PADRAO; // fallback: config embutida
 }
 
 // ─── Estado global ───────────────────────────────────────────────────────
@@ -1428,11 +1438,13 @@ function normStr(s) { return String(s || "").toLowerCase().trim().replace(/\s+/g
       </div>`;
   }
 
-  // Se Firebase não configurado mas tem param, preenche o campo mesmo assim
+  // Se Firebase não inicializou mas tem param de URL, preenche o campo
   if (URL_ERRO_PARAM && !cfg) {
     document.getElementById("f-erro").value = decodeURIComponent(URL_ERRO_PARAM);
     document.getElementById("banner-importado").style.display = "flex";
   }
+  // Setup banner só aparece se Firebase falhar completamente (config padrão existe)
+  document.getElementById("setup-banner").style.display = "none";
 })();
 </script>
 </body>
