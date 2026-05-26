@@ -23,6 +23,12 @@ def consulta_lotes_page():
     return render_template("consulta-lotes.html")
 
 
+@app.route("/cadastro-erros")
+@app.route("/cadastro-erros.html")
+def cadastro_erros_page():
+    return render_template("cadastro-erros.html")
+
+
 @app.route("/api/autenticar", methods=["POST"])
 def autenticar():
     body = request.json

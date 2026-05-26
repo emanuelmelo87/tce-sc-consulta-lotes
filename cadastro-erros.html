@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cadastro de Erros e Soluções — e-Sfinge TCE/SC</title>
+
+  <!-- Firebase 10 compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -17,6 +22,10 @@
       --red-bg:     #fee2e2;
       --amber:      #92400e;
       --amber-bg:   #fef3c7;
+      --purple:     #6d28d9;
+      --purple-bg:  #ede9fe;
+      --teal:       #0e7490;
+      --teal-bg:    #cffafe;
       --gray:       #6b7280;
       --gray-bg:    #f0f2f5;
       --border:     #e2e8f0;
@@ -44,657 +53,1323 @@
     .topbar a:hover { color: #fff; }
     .topbar-sep { color: rgba(255,255,255,.3); margin: 0 4px; }
     .topbar-title { font-weight: 700; }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+
+    .db-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      opacity: .9;
+    }
+    .db-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #fbbf24;
+      box-shadow: 0 0 5px #fbbf24;
+      animation: blink 1.2s infinite;
+    }
+    .db-dot.ok     { background: #4ade80; box-shadow: 0 0 5px #4ade80; animation: none; }
+    .db-dot.error  { background: #f87171; box-shadow: 0 0 5px #f87171; animation: none; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .btn-topo {
+      background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.25);
+      color: #fff;
+      border-radius: 7px;
+      padding: 5px 12px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .btn-topo:hover { background: rgba(255,255,255,.25); }
+
+    /* ── Setup Banner ── */
+    .setup-banner {
+      background: linear-gradient(135deg, #78350f, #b45309);
+      color: #fff;
+      padding: 18px 28px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .setup-banner-icon { font-size: 1.8rem; }
+    .setup-banner-body { flex: 1; min-width: 220px; }
+    .setup-banner-body h3 { font-size: 0.95rem; margin-bottom: 4px; }
+    .setup-banner-body p  { font-size: 0.8rem; opacity: .9; }
+    .btn-configurar {
+      background: #fff;
+      color: #92400e;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 18px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-configurar:hover { background: #fef3c7; }
 
     /* ── Layout ── */
     .layout {
       display: grid;
-      grid-template-columns: 380px 1fr;
+      grid-template-columns: 390px 1fr;
       gap: 20px;
-      max-width: 1200px;
+      max-width: 1320px;
       margin: 24px auto;
       padding: 0 20px 48px;
       align-items: start;
     }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
 
-    @media (max-width: 860px) {
-      .layout { grid-template-columns: 1fr; }
-    }
-
-    /* ── Painel Formulário ── */
-    .form-panel {
+    /* ── Panel ── */
+    .panel {
       background: #fff;
       border-radius: 14px;
       box-shadow: var(--shadow);
       overflow: hidden;
-      position: sticky;
-      top: 20px;
+    }
+    .panel-sticky { position: sticky; top: 20px; }
+    .panel-head {
+      padding: 16px 20px 13px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .panel-head h2 { font-size: 0.97rem; font-weight: 700; color: var(--blue); }
+    .panel-body { padding: 18px 20px; }
+
+    /* ── Form ── */
+    .fg { display: flex; flex-direction: column; gap: 5px; margin-bottom: 13px; }
+    .fg label {
+      font-size: 0.73rem;
+      font-weight: 700;
+      color: #374151;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .fg label .req { color: #dc2626; }
+    .fg input, .fg textarea, .fg select {
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 11px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: #1a1a2e;
+      transition: border-color .15s;
+      background: #fff;
+    }
+    .fg input:focus, .fg textarea:focus, .fg select:focus {
+      outline: none; border-color: var(--blue-mid);
+    }
+    .fg textarea { resize: vertical; }
+
+    /* ── Nova Versão Box ── */
+    .nova-versao-box {
+      background: #ecfeff;
+      border: 1.5px solid #67e8f9;
+      border-radius: 10px;
+      padding: 13px 14px;
+      margin-bottom: 13px;
+    }
+    .nova-versao-head {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--teal);
+      margin-bottom: 5px;
+    }
+    .nova-versao-desc {
+      font-size: 0.77rem;
+      color: #0c6c88;
+      line-height: 1.5;
+      margin-bottom: 10px;
     }
 
-    .form-header {
+    /* ── Form Actions ── */
+    .form-actions { display: flex; gap: 8px; margin-top: 4px; }
+    .btn-primary {
+      flex: 1;
       background: var(--blue);
       color: #fff;
-      padding: 18px 22px;
-    }
-    .form-header h2 { font-size: 1rem; font-weight: 700; }
-    .form-header p  { font-size: 0.78rem; opacity: .75; margin-top: 4px; }
-
-    .form-body { padding: 20px 22px; }
-
-    .field { margin-bottom: 14px; }
-    .field:last-of-type { margin-bottom: 0; }
-
-    label {
-      display: block;
-      font-size: 0.72rem;
+      border: none;
+      border-radius: 8px;
+      padding: 10px;
+      font-size: 0.87rem;
       font-weight: 700;
-      color: #555;
-      margin-bottom: 5px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--blue-mid); }
+    .btn-primary:disabled { opacity: .6; cursor: default; }
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #475569;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-secondary:hover { background: #e2e8f0; }
+
+    /* ── List Toolbar ── */
+    .list-toolbar {
+      padding: 13px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .list-toolbar input[type=search] {
+      flex: 1;
+      min-width: 140px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 11px;
+      font-size: 0.83rem;
+      font-family: inherit;
+    }
+    .list-toolbar input[type=search]:focus { outline: none; border-color: var(--blue); }
+    .list-toolbar select {
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      background: #fff;
+      color: #1a1a2e;
+    }
+    .list-count {
+      font-size: 0.75rem;
+      color: var(--gray);
+      white-space: nowrap;
+    }
+
+    /* ── Error Cards ── */
+    .list-body {
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 44px 20px;
+      color: var(--gray);
+      font-size: 0.87rem;
+    }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+    .erro-card {
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 15px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .erro-card:hover { border-color: #c7d2e8; box-shadow: 0 2px 8px rgba(26,58,107,.07); }
+    .erro-card.editando { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(30,74,138,.12); }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .card-badges { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 9px;
+      border-radius: 99px;
+      font-size: 0.69rem;
+      font-weight: 700;
+    }
+    .badge-ferr { background: var(--purple-bg); color: var(--purple); }
+    .badge-base { background: var(--blue-light); color: var(--blue-mid); }
+
+    .card-actions { display: flex; gap: 4px; flex-shrink: 0; }
+    .btn-icon {
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      padding: 5px 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: var(--gray);
+      transition: background .12s, border-color .12s;
+    }
+    .btn-icon:hover { background: var(--gray-bg); border-color: #9ca3af; }
+    .btn-icon.danger:hover { background: var(--red-bg); border-color: #fca5a5; color: var(--red); }
+
+    .card-erro-text {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #111827;
+      line-height: 1.45;
+    }
+
+    /* ── Solução Box ── */
+    .card-solucao {
+      background: var(--green-bg);
+      border-radius: 9px;
+      padding: 10px 12px;
+    }
+    .solucao-head {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-bottom: 7px;
+    }
+    .solucao-label {
+      font-size: 0.69rem;
+      font-weight: 700;
+      color: #166534;
       text-transform: uppercase;
       letter-spacing: .05em;
     }
-    label .req { color: #e53e3e; margin-left: 2px; }
-
-    input[type=text], textarea, select {
-      width: 100%;
-      padding: 8px 11px;
-      border: 1.5px solid var(--border);
-      border-radius: 7px;
-      font-size: 0.88rem;
-      color: #1a1a2e;
-      background: #fafbfc;
-      font-family: inherit;
-      transition: border-color .2s, background .2s;
-      resize: vertical;
-    }
-    input:focus, textarea:focus, select:focus {
-      outline: none;
-      border-color: var(--blue);
-      background: #fff;
-    }
-    textarea { min-height: 72px; }
-    textarea.tall { min-height: 90px; }
-
-    .char-hint { font-size: 0.68rem; color: #aaa; margin-top: 3px; text-align: right; }
-
-    .form-footer {
-      padding: 16px 22px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      gap: 8px;
-    }
-
-    .btn { border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer; padding: 9px 16px; transition: .15s; }
-    .btn-primary { background: var(--blue); color: #fff; flex: 1; }
-    .btn-primary:hover { background: var(--blue-mid); }
-    .btn-secondary { background: #f1f5f9; color: #374151; }
-    .btn-secondary:hover { background: #e2e8f0; }
-    .btn-danger { background: var(--red-bg); color: var(--red); }
-    .btn-danger:hover { background: #fecaca; }
-    .btn-sm { padding: 5px 10px; font-size: 0.75rem; border-radius: 6px; }
-
-    /* ── Painel Lista ── */
-    .list-panel { display: flex; flex-direction: column; gap: 14px; }
-
-    .list-topbar {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: var(--shadow);
-      padding: 14px 18px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .list-topbar h2 { font-size: 0.95rem; font-weight: 700; color: var(--blue); flex: 1; min-width: 120px; }
-
-    .search-wrap { flex: 2; min-width: 180px; position: relative; }
-    .search-wrap input {
-      padding-left: 32px;
-      background: #f8fafc;
-    }
-    .search-icon {
-      position: absolute; left: 10px; top: 50%;
-      transform: translateY(-50%);
-      color: #9ca3af; font-size: 0.9rem; pointer-events: none;
-    }
-
-    .filter-select { width: auto; min-width: 140px; flex-shrink: 0; }
-
-    .topbar-actions { display: flex; gap: 6px; flex-shrink: 0; }
-    .btn-icon { background: #f1f5f9; border: none; border-radius: 7px; padding: 7px 11px; cursor: pointer; font-size: 0.82rem; color: #374151; font-weight: 600; }
-    .btn-icon:hover { background: #e2e8f0; }
-
-    /* ── Cards de erro ── */
-    .empty-state {
-      background: #fff;
-      border-radius: 12px;
-      padding: 48px 24px;
-      text-align: center;
-      color: #aaa;
-      box-shadow: var(--shadow);
-    }
-    .empty-state .es-icon { font-size: 2.5rem; margin-bottom: 12px; }
-    .empty-state p { font-size: 0.88rem; }
-
-    .error-card {
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: var(--shadow);
-      border-left: 4px solid var(--blue);
-      overflow: hidden;
-      transition: box-shadow .15s;
-    }
-    .error-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.10); }
-
-    .ec-header {
-      padding: 14px 18px;
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      cursor: pointer;
-      user-select: none;
-    }
-    .ec-main { flex: 1; min-width: 0; }
-    .ec-title { font-size: 0.95rem; font-weight: 700; color: #1a1a2e; word-break: break-word; }
-    .ec-meta {
-      display: flex; flex-wrap: wrap; gap: 8px;
-      margin-top: 6px;
-    }
-    .meta-chip {
-      display: inline-flex; align-items: center; gap: 4px;
-      font-size: 0.72rem; color: #555;
-    }
-    .meta-chip .chip-icon { font-size: 0.75rem; }
-
-    .tag-ferramenta {
-      display: inline-block;
-      background: var(--blue-light);
-      color: var(--blue);
+    .versao-badge {
+      background: rgba(21,128,61,.15);
+      color: var(--green);
       border-radius: 99px;
-      padding: 2px 10px;
-      font-size: 0.72rem;
+      padding: 1px 8px;
+      font-size: 0.68rem;
       font-weight: 700;
     }
-    .tag-base {
-      display: inline-block;
-      background: var(--amber-bg);
-      color: var(--amber);
+    .btn-historico {
+      margin-left: auto;
+      background: rgba(21,128,61,.1);
+      border: 1px solid rgba(21,128,61,.22);
+      color: var(--green);
       border-radius: 99px;
-      padding: 2px 10px;
-      font-size: 0.72rem;
-      font-weight: 700;
-    }
-
-    .ec-toggle { color: #9ca3af; font-size: 0.85rem; flex-shrink: 0; padding-top: 2px; }
-
-    .ec-body {
-      display: none;
-      padding: 0 18px 16px;
-      border-top: 1px solid #f1f5f9;
-    }
-    .ec-body.open { display: block; }
-
-    .detail-section { margin-top: 14px; }
-    .detail-label {
+      padding: 2px 9px;
       font-size: 0.7rem;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      color: #9ca3af;
-      margin-bottom: 5px;
+      cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
+      transition: background .12s;
     }
-    .detail-label::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: #f1f5f9;
-    }
-    .detail-text {
+    .btn-historico:hover { background: rgba(21,128,61,.2); }
+
+    .solucao-text {
       font-size: 0.83rem;
+      color: #1a1a2e;
+      line-height: 1.55;
+    }
+    .solucao-indicado {
+      font-size: 0.7rem;
+      color: #4b7a59;
+      margin-top: 5px;
+    }
+
+    /* ── Extras ── */
+    .card-extra { display: flex; flex-direction: column; gap: 7px; }
+    .card-field {
+      font-size: 0.8rem;
       color: #374151;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      word-break: break-word;
+      line-height: 1.45;
+    }
+    .card-field-label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: #6b7280;
+      margin-bottom: 2px;
+    }
+    .card-dica {
+      background: var(--amber-bg);
+      border-radius: 7px;
+      padding: 7px 10px;
+      font-size: 0.78rem;
+      color: var(--amber);
+      line-height: 1.45;
     }
 
-    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
-
-    .ec-actions {
+    .card-footer {
       display: flex;
-      gap: 6px;
-      margin-top: 16px;
-      padding-top: 12px;
-      border-top: 1px solid #f1f5f9;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.69rem;
+      color: #9ca3af;
+      padding-top: 7px;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+      gap: 4px;
     }
 
-    /* ── Notificação toast ── */
-    #toast {
-      position: fixed;
-      bottom: 24px; left: 50%;
-      transform: translateX(-50%) translateY(80px);
-      background: #1a1a2e;
-      color: #fff;
-      padding: 10px 22px;
-      border-radius: 99px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      box-shadow: 0 4px 20px rgba(0,0,0,.2);
-      transition: transform .3s ease;
-      pointer-events: none;
-      z-index: 999;
-      white-space: nowrap;
-    }
-    #toast.show { transform: translateX(-50%) translateY(0); }
-
-    /* ── Modal confirmação ── */
+    /* ── Modals ── */
     .modal-overlay {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,.4);
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.46);
       z-index: 100;
+      display: flex;
       align-items: center;
       justify-content: center;
+      padding: 20px;
     }
-    .modal-overlay.open { display: flex; }
     .modal-box {
       background: #fff;
       border-radius: 14px;
-      padding: 28px 28px 22px;
-      max-width: 380px;
-      width: 90%;
-      box-shadow: 0 8px 40px rgba(0,0,0,.2);
+      width: 100%;
+      max-width: 520px;
+      max-height: 86vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 60px rgba(0,0,0,.22);
     }
-    .modal-box h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
-    .modal-box p  { font-size: 0.85rem; color: #555; margin-bottom: 20px; line-height: 1.5; }
-    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
-
-    /* ── Contador ── */
-    .count-badge {
-      background: var(--blue);
+    .modal-box.lg { max-width: 700px; }
+    .modal-head {
+      padding: 17px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .modal-head h3 { font-size: 0.97rem; font-weight: 700; }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.25rem;
+      color: var(--gray);
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .modal-body { padding: 20px; overflow-y: auto; flex: 1; }
+    .modal-foot {
+      padding: 13px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      flex-shrink: 0;
+    }
+    .btn-danger {
+      background: #dc2626;
       color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 20px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-danger:hover { background: #b91c1c; }
+
+    /* ── Config Modal ── */
+    .config-guide {
+      background: var(--gray-bg);
+      border-radius: 9px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+    }
+    .config-guide p {
+      font-size: 0.8rem;
+      color: #374151;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .config-guide ol {
+      font-size: 0.79rem;
+      color: #374151;
+      margin-left: 18px;
+      line-height: 1.9;
+    }
+    .config-guide code {
+      background: #e2e8f0;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 0.76rem;
+    }
+    .rules-warn {
+      margin-top: 12px;
+      background: var(--amber-bg);
+      border-radius: 7px;
+      padding: 9px 12px;
+      font-size: 0.76rem;
+      color: var(--amber);
+      line-height: 1.5;
+    }
+    .rules-code {
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 7px;
+      padding: 10px 12px;
+      font-size: 0.72rem;
+      font-family: monospace;
+      margin-top: 8px;
+      white-space: pre;
+      overflow-x: auto;
+    }
+    .config-textarea {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 11px;
+      font-size: 0.78rem;
+      font-family: monospace;
+      resize: vertical;
+      min-height: 130px;
+      color: #1a1a2e;
+    }
+    .config-textarea:focus { outline: none; border-color: var(--blue-mid); }
+    .config-err {
+      margin-top: 7px;
+      font-size: 0.78rem;
+      color: #b91c1c;
+      background: var(--red-bg);
+      border-radius: 6px;
+      padding: 7px 10px;
+    }
+
+    /* ── History Timeline ── */
+    .erro-ref {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-radius: 8px;
+      padding: 10px 13px;
+      font-size: 0.83rem;
+      margin-bottom: 18px;
+      line-height: 1.45;
+      color: #1a1a2e;
+    }
+    .erro-ref strong {
+      display: block;
+      font-size: 0.69rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      color: #92400e;
+      margin-bottom: 3px;
+    }
+
+    .timeline { display: flex; flex-direction: column; }
+    .tl-item {
+      display: flex;
+      gap: 14px;
+      padding-bottom: 18px;
+      position: relative;
+    }
+    .tl-item:not(:last-child)::before {
+      content: '';
+      position: absolute;
+      left: 15px;
+      top: 33px;
+      bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+    .tl-marker {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--gray-bg);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.66rem;
+      font-weight: 700;
+      color: var(--gray);
+      flex-shrink: 0;
+      z-index: 1;
+    }
+    .tl-item.atual .tl-marker {
+      background: var(--green-bg);
+      border-color: #86efac;
+      color: var(--green);
+    }
+    .tl-content { flex: 1; padding-top: 4px; }
+    .tl-meta {
+      font-size: 0.74rem;
+      color: var(--gray);
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
+    .tl-meta strong { color: #1a1a2e; }
+    .badge-atual {
+      display: inline-flex;
+      background: var(--green-bg);
+      color: var(--green);
       border-radius: 99px;
       padding: 1px 8px;
-      font-size: 0.72rem;
+      font-size: 0.66rem;
       font-weight: 700;
+      margin-left: 6px;
+      vertical-align: middle;
     }
+    .tl-solucao {
+      font-size: 0.82rem;
+      color: #374151;
+      line-height: 1.55;
+      background: var(--gray-bg);
+      border-radius: 7px;
+      padding: 8px 11px;
+    }
+    .tl-item.atual .tl-solucao { background: var(--green-bg); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1a1a2e;
+      color: #fff;
+      padding: 11px 18px;
+      border-radius: 9px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0,0,0,.25);
+      z-index: 200;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity .2s, transform .2s;
+      max-width: 340px;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.ok    { background: #15803d; }
+    .toast.err   { background: #b91c1c; }
   </style>
 </head>
 <body>
 
-<!-- Topbar -->
+<!-- ═══════════════════════════════════════════════
+     TOPBAR
+════════════════════════════════════════════════ -->
 <div class="topbar">
-  <a href="./">← Central de Apoio</a>
-  <span class="topbar-sep">/</span>
+  <a href="./">← Central</a>
+  <span class="topbar-sep">›</span>
   <span class="topbar-title">Cadastro de Erros e Soluções</span>
+  <div class="topbar-right">
+    <div class="db-status">
+      <div class="db-dot" id="db-dot"></div>
+      <span id="db-txt">Aguardando...</span>
+    </div>
+    <button class="btn-topo" id="btn-open-config">⚙️ Firebase</button>
+  </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════
+     SETUP BANNER (aparece só quando não configurado)
+════════════════════════════════════════════════ -->
+<div id="setup-banner" style="display:none" class="setup-banner">
+  <div class="setup-banner-icon">🔥</div>
+  <div class="setup-banner-body">
+    <h3>Firebase não configurado</h3>
+    <p>Configure um projeto Firebase Firestore para persistir os dados na nuvem e compartilhá-los com a equipe.</p>
+  </div>
+  <button class="btn-configurar" id="btn-banner-config">⚙️ Configurar agora</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     LAYOUT PRINCIPAL
+════════════════════════════════════════════════ -->
 <div class="layout">
 
-  <!-- ── Formulário ── -->
-  <div class="form-panel" id="form-panel">
-    <div class="form-header">
-      <h2 id="form-title">➕ Novo Registro</h2>
-      <p id="form-subtitle">Preencha as informações do erro e sua solução</p>
+  <!-- ── Painel Formulário ── -->
+  <div class="panel panel-sticky">
+    <div class="panel-head">
+      <h2 id="form-titulo">➕ Novo Erro</h2>
     </div>
+    <div class="panel-body">
+      <form id="form-erro" autocomplete="off">
 
-    <div class="form-body">
-      <input type="hidden" id="edit-id">
+        <div class="fg">
+          <label for="f-erro">Mensagem de Erro <span class="req">*</span></label>
+          <textarea id="f-erro" rows="3" required placeholder="Descreva a mensagem de erro exibida..."></textarea>
+        </div>
 
-      <div class="field">
-        <label>Erro <span class="req">*</span></label>
-        <input type="text" id="f-erro" placeholder="Nome ou descrição do erro" maxlength="200">
-      </div>
+        <div class="fg">
+          <label for="f-registrado">Registrado por</label>
+          <input type="text" id="f-registrado" placeholder="Seu nome">
+        </div>
 
-      <div class="field">
-        <label>Quem Registrou</label>
-        <input type="text" id="f-registrado-por" placeholder="Seu nome ou equipe">
-      </div>
+        <div class="fg">
+          <label for="f-base">Base / Sistema</label>
+          <input type="text" id="f-base" placeholder="Ex: Tributos, Arrecadação...">
+        </div>
 
-      <div class="field">
-        <label>Ocorre na Base / Módulo</label>
-        <input type="text" id="f-base" placeholder="ex: Cadastro Imobiliário, IPTU, ITBI...">
-      </div>
+        <div class="fg">
+          <label for="f-ferramenta">Ferramenta que resolve</label>
+          <input type="text" id="f-ferramenta" placeholder="Nome da ferramenta...">
+        </div>
 
-      <div class="field">
-        <label>Como Resolver <span class="req">*</span></label>
-        <textarea class="tall" id="f-solucao" placeholder="Descreva o passo a passo para resolver o erro..."></textarea>
-      </div>
+        <div class="fg">
+          <label for="f-solucao">Solução <span class="req">*</span></label>
+          <textarea id="f-solucao" rows="4" required placeholder="Como resolver este erro..."></textarea>
+        </div>
 
-      <div class="field">
-        <label>Ferramenta que Resolve</label>
-        <input type="text" id="f-ferramenta" placeholder="ex: e-Sfinge, Betha Tributário, SQL, Excel...">
-      </div>
+        <!-- Box: nova versão (aparece ao editar com solução alterada) -->
+        <div id="nova-versao-box" class="nova-versao-box" style="display:none">
+          <div class="nova-versao-head">🔄 Nova versão da solução detectada</div>
+          <p class="nova-versao-desc">
+            A solução foi modificada. Informe quem está indicando esta nova versão — isso cria um registro histórico da mudança.
+          </p>
+          <div class="fg" style="margin-bottom:0">
+            <label for="f-indicado">Indicado por <span class="req">*</span></label>
+            <input type="text" id="f-indicado" placeholder="Seu nome">
+          </div>
+        </div>
 
-      <div class="field">
-        <label>Como Usar a Ferramenta</label>
-        <textarea id="f-como-usar" placeholder="Passo a passo de como usar a ferramenta para resolver..."></textarea>
-      </div>
+        <div class="fg">
+          <label for="f-como">Como usar a ferramenta</label>
+          <textarea id="f-como" rows="3" placeholder="Passo a passo..."></textarea>
+        </div>
 
-      <div class="field">
-        <label>Dicas de Uso</label>
-        <textarea id="f-dicas" placeholder="Dicas, atalhos, cuidados ou observações importantes..."></textarea>
-      </div>
-    </div>
+        <div class="fg">
+          <label for="f-dicas">Dicas de uso</label>
+          <textarea id="f-dicas" rows="2" placeholder="Observações, atalhos, cuidados..."></textarea>
+        </div>
 
-    <div class="form-footer">
-      <button class="btn btn-secondary btn-sm" id="btn-cancelar" onclick="cancelarEdicao()" style="display:none">Cancelar</button>
-      <button class="btn btn-primary" id="btn-salvar" onclick="salvar()">💾 Salvar Registro</button>
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" id="btn-salvar">💾 Salvar</button>
+          <button type="button" class="btn-secondary" id="btn-cancelar" style="display:none">Cancelar</button>
+        </div>
+
+      </form>
     </div>
   </div>
 
-  <!-- ── Lista ── -->
-  <div class="list-panel">
-
-    <div class="list-topbar">
-      <h2>Base de Conhecimento <span class="count-badge" id="count-badge">0</span></h2>
-      <div class="search-wrap">
-        <span class="search-icon">🔍</span>
-        <input type="text" id="search-input" placeholder="Buscar erro, ferramenta, base..." oninput="renderLista()">
-      </div>
-      <select class="filter-select" id="filter-ferramenta" onchange="renderLista()">
-        <option value="">Todas as ferramentas</option>
+  <!-- ── Painel Lista ── -->
+  <div class="panel">
+    <div class="list-toolbar">
+      <input type="search" id="busca" placeholder="🔍 Buscar erro, solução, ferramenta...">
+      <select id="filtro-ferr">
+        <option value="">Todas ferramentas</option>
       </select>
-      <div class="topbar-actions">
-        <button class="btn-icon" onclick="exportarJson()" title="Exportar JSON">⬇ Exportar</button>
-        <button class="btn-icon" onclick="document.getElementById('import-file').click()" title="Importar JSON">⬆ Importar</button>
-        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importarJson(event)">
+      <span class="list-count" id="list-count">—</span>
+    </div>
+    <div class="list-body" id="lista">
+      <div class="empty-state">
+        <div class="empty-icon">📚</div>
+        <p>Nenhum registro ainda.</p>
       </div>
     </div>
+  </div>
 
-    <div id="lista-container"></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL: HISTÓRICO DE VERSÕES
+════════════════════════════════════════════════ -->
+<div id="modal-hist" class="modal-overlay" style="display:none">
+  <div class="modal-box lg">
+    <div class="modal-head">
+      <h3>📜 Histórico de Soluções</h3>
+      <button class="modal-close" data-close="modal-hist">×</button>
+    </div>
+    <div class="modal-body">
+      <div id="hist-erro-ref" class="erro-ref"></div>
+      <div id="hist-timeline" class="timeline"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-secondary" data-close="modal-hist">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL: CONFIRMAR EXCLUSÃO
+════════════════════════════════════════════════ -->
+<div id="modal-del" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3>⚠️ Confirmar exclusão</h3>
+      <button class="modal-close" data-close="modal-del">×</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.88rem; line-height:1.6;">Tem certeza que deseja excluir este registro? Todo o histórico de versões será perdido e esta ação <strong>não pode ser desfeita</strong>.</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-secondary" data-close="modal-del">Cancelar</button>
+      <button class="btn-danger" id="btn-confirmar-del">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════
+     MODAL: CONFIGURAÇÃO FIREBASE
+════════════════════════════════════════════════ -->
+<div id="modal-config" class="modal-overlay" style="display:none">
+  <div class="modal-box lg">
+    <div class="modal-head">
+      <h3>🔥 Configuração Firebase</h3>
+      <button class="modal-close" data-close="modal-config">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="config-guide">
+        <p>Como obter a configuração:</p>
+        <ol>
+          <li>Acesse <strong>console.firebase.google.com</strong> e crie/abra um projeto</li>
+          <li>No menu lateral: <strong>Firestore Database</strong> → Criar banco de dados</li>
+          <li>Nas configurações do projeto (⚙️) → <strong>Seus aplicativos</strong> → Web (<code>&lt;/&gt;</code>)</li>
+          <li>Copie o objeto <code>firebaseConfig</code> (só o JSON entre <code>{ }</code>)</li>
+          <li>Cole no campo abaixo e clique em <strong>Salvar e conectar</strong></li>
+        </ol>
+        <div class="rules-warn">
+          ⚠️ <strong>Regras do Firestore</strong> — para uso interno, configure assim em
+          <em>Firestore → Regras</em>:<pre class="rules-code">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+        </div>
+      </div>
+
+      <label style="font-size:.78rem;font-weight:700;color:#374151;display:block;margin-bottom:6px;">
+        Configuração Firebase (JSON):
+      </label>
+      <textarea id="config-json" class="config-textarea" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "meu-projeto.firebaseapp.com",
+  "projectId": "meu-projeto",
+  "storageBucket": "meu-projeto.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123456789:web:abc..."
+}'></textarea>
+      <div id="config-err" class="config-err" style="display:none"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-secondary" id="btn-limpar-config">🗑️ Limpar</button>
+      <button class="btn-secondary" data-close="modal-config">Cancelar</button>
+      <button class="btn-primary" id="btn-salvar-config" style="flex:0;white-space:nowrap">✅ Salvar e conectar</button>
+    </div>
   </div>
 </div>
 
 <!-- Toast -->
-<div id="toast"></div>
+<div id="toast" class="toast"></div>
 
-<!-- Modal confirmação de exclusão -->
-<div class="modal-overlay" id="modal-excluir">
-  <div class="modal-box">
-    <h3>Excluir registro?</h3>
-    <p id="modal-msg">Esta ação não pode ser desfeita.</p>
-    <div class="modal-actions">
-      <button class="btn btn-secondary btn-sm" onclick="fecharModal()">Cancelar</button>
-      <button class="btn btn-danger btn-sm" id="btn-confirmar-excluir">Excluir</button>
-    </div>
-  </div>
-</div>
-
+<!-- ═══════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════ -->
 <script>
-  const STORAGE_KEY = "tce-erros-cadastro-v1";
-  let registros = carregarDados();
-  let excluirIdPendente = null;
+// ─── Chave localStorage para config Firebase ─────────────────────────────
+const FB_LS = "fb-config-v1";
 
-  // ── Persistência ─────────────────────────────────────────────────
-  function carregarDados() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
-    catch { return []; }
+function lerConfig() {
+  try {
+    const s = JSON.parse(localStorage.getItem(FB_LS) || "null");
+    if (s && s.projectId && s.apiKey) return s;
+  } catch {}
+  return null;
+}
+
+// ─── Estado global ───────────────────────────────────────────────────────
+let db = null, col = null, unsub = null;
+let erros = [];
+let editId = null;
+let solucaoOriginal = "";
+let pendingDelId = null;
+
+// ─── UUID ─────────────────────────────────────────────────────────────────
+function uid() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+  });
+}
+
+// ─── Helpers de data ─────────────────────────────────────────────────────
+function fmtData(iso) {
+  if (!iso) return "";
+  try { return new Date(iso).toLocaleDateString("pt-BR"); } catch { return iso; }
+}
+function fmtDataHora(iso) {
+  if (!iso) return "";
+  try { return new Date(iso).toLocaleString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" }); }
+  catch { return iso; }
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, tipo = "ok") {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.className = `toast show ${tipo}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = "toast"; }, 3200);
+}
+
+// ─── Status do banco ─────────────────────────────────────────────────────
+function setStatus(estado, txt) {
+  document.getElementById("db-dot").className = "db-dot " + (estado === "ok" ? "ok" : estado === "error" ? "error" : "");
+  document.getElementById("db-txt").textContent = txt;
+}
+
+// ─── Init Firebase ────────────────────────────────────────────────────────
+function initFirebase(config) {
+  try {
+    // Se já há app inicializado, reutiliza; caso contrário inicializa
+    if (!firebase.apps.length) {
+      firebase.initializeApp(config);
+    }
+    db  = firebase.firestore();
+    col = db.collection("erros-esfinge");
+    setStatus("loading", "Conectando...");
+    iniciarListener();
+    return true;
+  } catch (e) {
+    console.error("Firebase init:", e);
+    setStatus("error", "Erro na config");
+    toast("Erro ao inicializar Firebase: " + e.message, "err");
+    return false;
   }
-  function salvarDados() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+}
+
+// ─── Listener em tempo real ───────────────────────────────────────────────
+function iniciarListener() {
+  if (unsub) unsub();
+  unsub = col.orderBy("criadoEm", "desc").onSnapshot(
+    snap => {
+      erros = snap.docs.map(doc => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          ...d,
+          criadoEm:    normTs(d.criadoEm),
+          atualizadoEm: normTs(d.atualizadoEm),
+          solucoes: (d.solucoes || []).map(s => ({ ...s, dataIndicacao: normTs(s.dataIndicacao) }))
+        };
+      });
+      setStatus("ok", `${erros.length} registro${erros.length !== 1 ? "s" : ""}`);
+      renderLista();
+      atualizarFiltroFerr();
+    },
+    err => {
+      setStatus("error", "Erro ao carregar");
+      toast("Erro no Firestore: " + err.message, "err");
+    }
+  );
+}
+
+// Normaliza Firestore Timestamp → ISO string
+function normTs(val) {
+  if (!val) return null;
+  if (val.toDate) return val.toDate().toISOString();
+  return val;
+}
+
+// ─── CRUD ─────────────────────────────────────────────────────────────────
+async function criar(dados) {
+  const versao1 = {
+    id: uid(),
+    solucao: dados.solucao || "",
+    indicadoPor: dados.registrado || "Anônimo",
+    dataIndicacao: new Date().toISOString(),
+    versao: 1
+  };
+  await col.add({
+    erro:       dados.erro,
+    registrado: dados.registrado || "",
+    base:       dados.base || "",
+    ferramenta: dados.ferramenta || "",
+    como:       dados.como || "",
+    dicas:      dados.dicas || "",
+    solucoes:   [versao1],
+    criadoEm:   firebase.firestore.FieldValue.serverTimestamp(),
+    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+async function atualizar(id, dados, novaSolucao, indicadoPor) {
+  const docRef = col.doc(id);
+  const snap   = await docRef.get();
+  const atual  = snap.data();
+  let solucoes = (atual.solucoes || []).slice();
+
+  const updates = {
+    erro:       dados.erro,
+    registrado: dados.registrado || "",
+    base:       dados.base || "",
+    ferramenta: dados.ferramenta || "",
+    como:       dados.como || "",
+    dicas:      dados.dicas || "",
+    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  // Cria nova versão somente se a solução mudou
+  const solAtual = solucoes[solucoes.length - 1]?.solucao || "";
+  if (novaSolucao.trim() !== solAtual.trim()) {
+    solucoes = [...solucoes, {
+      id: uid(),
+      solucao: novaSolucao.trim(),
+      indicadoPor: indicadoPor?.trim() || "Anônimo",
+      dataIndicacao: new Date().toISOString(),
+      versao: solucoes.length + 1
+    }];
+    updates.solucoes = solucoes;
   }
 
-  // ── CRUD ─────────────────────────────────────────────────────────
-  function salvar() {
-    const erro     = document.getElementById("f-erro").value.trim();
-    const solucao  = document.getElementById("f-solucao").value.trim();
+  await docRef.update(updates);
+}
 
-    if (!erro)    { flash("⚠ Informe o erro."); document.getElementById("f-erro").focus(); return; }
-    if (!solucao) { flash("⚠ Informe como resolver."); document.getElementById("f-solucao").focus(); return; }
+async function deletar(id) {
+  await col.doc(id).delete();
+}
 
-    const editId = document.getElementById("edit-id").value;
+// ─── Formulário ───────────────────────────────────────────────────────────
+function coletarForm() {
+  return {
+    erro:       document.getElementById("f-erro").value.trim(),
+    registrado: document.getElementById("f-registrado").value.trim(),
+    base:       document.getElementById("f-base").value.trim(),
+    ferramenta: document.getElementById("f-ferramenta").value.trim(),
+    solucao:    document.getElementById("f-solucao").value.trim(),
+    como:       document.getElementById("f-como").value.trim(),
+    dicas:      document.getElementById("f-dicas").value.trim()
+  };
+}
 
-    const registro = {
-      id:             editId || crypto.randomUUID(),
-      erro,
-      registradoPor:  document.getElementById("f-registrado-por").value.trim(),
-      base:           document.getElementById("f-base").value.trim(),
-      solucao,
-      ferramenta:     document.getElementById("f-ferramenta").value.trim(),
-      comoUsar:       document.getElementById("f-como-usar").value.trim(),
-      dicas:          document.getElementById("f-dicas").value.trim(),
-      criadoEm:       editId ? (registros.find(r => r.id === editId)?.criadoEm || new Date().toISOString()) : new Date().toISOString(),
-      atualizadoEm:   new Date().toISOString(),
-    };
+function limparForm() {
+  document.getElementById("form-erro").reset();
+  document.getElementById("nova-versao-box").style.display = "none";
+  document.getElementById("f-indicado").value = "";
+  document.getElementById("form-titulo").textContent = "➕ Novo Erro";
+  document.getElementById("btn-salvar").textContent = "💾 Salvar";
+  document.getElementById("btn-cancelar").style.display = "none";
+  // Remover destaque de card em edição
+  document.querySelectorAll(".erro-card.editando").forEach(c => c.classList.remove("editando"));
+  editId = null;
+  solucaoOriginal = "";
+}
 
+function carregarForm(e) {
+  const solAtual = e.solucoes?.[e.solucoes.length - 1]?.solucao || "";
+  document.getElementById("f-erro").value       = e.erro        || "";
+  document.getElementById("f-registrado").value = e.registrado  || "";
+  document.getElementById("f-base").value       = e.base        || "";
+  document.getElementById("f-ferramenta").value = e.ferramenta  || "";
+  document.getElementById("f-solucao").value    = solAtual;
+  document.getElementById("f-como").value       = e.como        || "";
+  document.getElementById("f-dicas").value      = e.dicas       || "";
+
+  solucaoOriginal = solAtual;
+  editId = e.id;
+
+  document.getElementById("nova-versao-box").style.display = "none";
+  document.getElementById("f-indicado").value = "";
+  document.getElementById("form-titulo").textContent = "✏️ Editando";
+  document.getElementById("btn-salvar").textContent = "💾 Atualizar";
+  document.getElementById("btn-cancelar").style.display = "";
+
+  // Destacar card em edição
+  document.querySelectorAll(".erro-card.editando").forEach(c => c.classList.remove("editando"));
+  const card = document.querySelector(`.btn-edit[data-id="${e.id}"]`)?.closest(".erro-card");
+  if (card) card.classList.add("editando");
+
+  document.querySelector(".panel-sticky").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// Detectar mudança na solução durante edição → mostrar box de nova versão
+document.getElementById("f-solucao").addEventListener("input", function () {
+  if (!editId) return;
+  const mudou = this.value.trim() !== solucaoOriginal.trim();
+  document.getElementById("nova-versao-box").style.display = mudou ? "" : "none";
+  if (!mudou) document.getElementById("f-indicado").value = "";
+});
+
+// Submit
+document.getElementById("form-erro").addEventListener("submit", async function (e) {
+  e.preventDefault();
+  if (!col) { toast("Firebase não configurado.", "err"); return; }
+
+  const dados = coletarForm();
+  const btn = document.getElementById("btn-salvar");
+  btn.disabled = true;
+  btn.textContent = "⏳ Salvando...";
+
+  try {
     if (editId) {
-      const idx = registros.findIndex(r => r.id === editId);
-      if (idx > -1) registros[idx] = registro;
+      const novaSolucao = dados.solucao;
+      const indicado = document.getElementById("f-indicado").value.trim();
+
+      // Se solução mudou, indicado é obrigatório
+      if (novaSolucao.trim() !== solucaoOriginal.trim() && !indicado) {
+        toast("Informe quem está indicando a nova versão.", "err");
+        document.getElementById("f-indicado").focus();
+        return;
+      }
+
+      await atualizar(editId, dados, novaSolucao, indicado);
+      toast("Registro atualizado com sucesso!");
     } else {
-      registros.unshift(registro);
+      await criar(dados);
+      toast("Erro cadastrado com sucesso!");
     }
+    limparForm();
+  } catch (err) {
+    console.error(err);
+    toast("Erro ao salvar: " + err.message, "err");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = editId ? "💾 Atualizar" : "💾 Salvar";
+  }
+});
 
-    salvarDados();
-    limparFormulario();
-    atualizarFiltroFerramentas();
-    renderLista();
-    flash(editId ? "✓ Registro atualizado!" : "✓ Registro salvo!");
+document.getElementById("btn-cancelar").addEventListener("click", limparForm);
 
-    // Rola para o card recém criado/editado
-    setTimeout(() => {
-      const card = document.getElementById(`card-${registro.id}`);
-      if (card) card.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 100);
+// ─── Renderizar lista ─────────────────────────────────────────────────────
+function renderLista() {
+  const busca = document.getElementById("busca").value.toLowerCase();
+  const filtFerr = document.getElementById("filtro-ferr").value;
+
+  const filtrados = erros.filter(e => {
+    if (filtFerr && e.ferramenta !== filtFerr) return false;
+    if (!busca) return true;
+    const solAtual = e.solucoes?.[e.solucoes.length - 1]?.solucao || "";
+    return [e.erro, solAtual, e.ferramenta, e.base, e.registrado, e.como, e.dicas]
+      .some(v => (v || "").toLowerCase().includes(busca));
+  });
+
+  document.getElementById("list-count").textContent =
+    `${filtrados.length} de ${erros.length} registro${erros.length !== 1 ? "s" : ""}`;
+
+  const container = document.getElementById("lista");
+
+  if (filtrados.length === 0) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">${erros.length === 0 ? "📚" : "🔍"}</div>
+      <p>${erros.length === 0 ? "Nenhum registro ainda. Cadastre o primeiro erro acima." : "Nenhum resultado para a busca."}</p>
+    </div>`;
+    return;
   }
 
-  function editar(id) {
-    const r = registros.find(r => r.id === id);
-    if (!r) return;
-    document.getElementById("edit-id").value             = id;
-    document.getElementById("f-erro").value              = r.erro;
-    document.getElementById("f-registrado-por").value    = r.registradoPor;
-    document.getElementById("f-base").value              = r.base;
-    document.getElementById("f-solucao").value           = r.solucao;
-    document.getElementById("f-ferramenta").value        = r.ferramenta;
-    document.getElementById("f-como-usar").value         = r.comoUsar;
-    document.getElementById("f-dicas").value             = r.dicas;
+  container.innerHTML = filtrados.map(e => cardHTML(e)).join("");
 
-    document.getElementById("form-title").textContent    = "✏️ Editar Registro";
-    document.getElementById("form-subtitle").textContent = r.erro.slice(0, 60) + (r.erro.length > 60 ? "…" : "");
-    document.getElementById("btn-cancelar").style.display = "";
-    document.getElementById("btn-salvar").textContent    = "💾 Atualizar";
+  container.querySelectorAll(".btn-edit").forEach(btn =>
+    btn.addEventListener("click", () => {
+      const e = erros.find(x => x.id === btn.dataset.id);
+      if (e) carregarForm(e);
+    })
+  );
+  container.querySelectorAll(".btn-del").forEach(btn =>
+    btn.addEventListener("click", () => {
+      pendingDelId = btn.dataset.id;
+      document.getElementById("modal-del").style.display = "flex";
+    })
+  );
+  container.querySelectorAll(".btn-historico").forEach(btn =>
+    btn.addEventListener("click", () => {
+      const e = erros.find(x => x.id === btn.dataset.id);
+      if (e) abrirHistorico(e);
+    })
+  );
+}
 
-    document.getElementById("form-panel").scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+function cardHTML(e) {
+  const solucoes = e.solucoes || [];
+  const solAtual = solucoes[solucoes.length - 1];
+  const nVersoes = solucoes.length;
 
-  function cancelarEdicao() {
-    limparFormulario();
-    flash("Edição cancelada.");
-  }
+  const bFerr = e.ferramenta ? `<span class="badge badge-ferr">🔧 ${esc(e.ferramenta)}</span>` : "";
+  const bBase = e.base       ? `<span class="badge badge-base">🗄️ ${esc(e.base)}</span>` : "";
 
-  function limparFormulario() {
-    ["edit-id","f-erro","f-registrado-por","f-base","f-solucao","f-ferramenta","f-como-usar","f-dicas"]
-      .forEach(id => document.getElementById(id).value = "");
-    document.getElementById("form-title").textContent    = "➕ Novo Registro";
-    document.getElementById("form-subtitle").textContent = "Preencha as informações do erro e sua solução";
-    document.getElementById("btn-cancelar").style.display = "none";
-    document.getElementById("btn-salvar").textContent    = "💾 Salvar Registro";
-  }
+  const btnHist = nVersoes > 1
+    ? `<button class="btn-historico" data-id="${e.id}">📜 ${nVersoes} versões</button>`
+    : "";
+  const vBadge = `<span class="versao-badge">v${nVersoes}</span>`;
 
-  function confirmarExcluir(id) {
-    const r = registros.find(r => r.id === id);
-    excluirIdPendente = id;
-    document.getElementById("modal-msg").textContent = `Deseja excluir o registro "${r?.erro?.slice(0,60)}"?`;
-    document.getElementById("btn-confirmar-excluir").onclick = () => excluir(id);
-    document.getElementById("modal-excluir").classList.add("open");
-  }
+  const indicado = solAtual
+    ? `<div class="solucao-indicado">
+         Versão ${solAtual.versao || nVersoes} — indicado por <strong>${esc(solAtual.indicadoPor || "?")}</strong>
+         ${solAtual.dataIndicacao ? " em " + fmtData(solAtual.dataIndicacao) : ""}
+       </div>`
+    : "";
 
-  function excluir(id) {
-    registros = registros.filter(r => r.id !== id);
-    salvarDados();
-    fecharModal();
-    atualizarFiltroFerramentas();
-    renderLista();
-    flash("🗑 Registro excluído.");
-    if (document.getElementById("edit-id").value === id) limparFormulario();
-  }
+  const comoHtml = e.como
+    ? `<div class="card-field">
+         <span class="card-field-label">Como usar a ferramenta</span>
+         ${esc(e.como)}
+       </div>`
+    : "";
+  const dicaHtml = e.dicas
+    ? `<div class="card-dica">💡 ${esc(e.dicas)}</div>`
+    : "";
 
-  function fecharModal() {
-    document.getElementById("modal-excluir").classList.remove("open");
-    excluirIdPendente = null;
-  }
+  const rodape = [
+    e.registrado  ? `Registrado por <strong>${esc(e.registrado)}</strong>` : "",
+    e.criadoEm    ? fmtDataHora(e.criadoEm) : ""
+  ].filter(Boolean).join(" · ");
 
-  // ── Renderização da lista ─────────────────────────────────────────
-  function renderLista() {
-    const busca = document.getElementById("search-input").value.toLowerCase();
-    const filtroFerr = document.getElementById("filter-ferramenta").value.toLowerCase();
-
-    const filtrados = registros.filter(r => {
-      const texto = [r.erro, r.base, r.solucao, r.ferramenta, r.registradoPor, r.comoUsar, r.dicas]
-        .join(" ").toLowerCase();
-      const matchBusca = !busca || texto.includes(busca);
-      const matchFerr  = !filtroFerr || r.ferramenta.toLowerCase() === filtroFerr;
-      return matchBusca && matchFerr;
-    });
-
-    document.getElementById("count-badge").textContent = filtrados.length;
-    const container = document.getElementById("lista-container");
-
-    if (filtrados.length === 0) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <div class="es-icon">${registros.length === 0 ? "📝" : "🔍"}</div>
-          <p>${registros.length === 0
-            ? "Nenhum registro ainda.<br>Use o formulário ao lado para cadastrar o primeiro erro."
-            : "Nenhum resultado para esta busca."
-          }</p>
-        </div>`;
-      return;
-    }
-
-    container.innerHTML = filtrados.map(r => `
-      <div class="error-card" id="card-${r.id}">
-        <div class="ec-header" onclick="toggleCard('${r.id}')">
-          <div class="ec-main">
-            <div class="ec-title">${escHtml(r.erro)}</div>
-            <div class="ec-meta">
-              ${r.ferramenta ? `<span class="tag-ferramenta">🔧 ${escHtml(r.ferramenta)}</span>` : ""}
-              ${r.base       ? `<span class="tag-base">📂 ${escHtml(r.base)}</span>` : ""}
-              ${r.registradoPor ? `<span class="meta-chip"><span class="chip-icon">👤</span> ${escHtml(r.registradoPor)}</span>` : ""}
-              <span class="meta-chip"><span class="chip-icon">📅</span> ${formatarData(r.criadoEm)}</span>
-            </div>
-          </div>
-          <span class="ec-toggle" id="toggle-${r.id}">▸</span>
-        </div>
-
-        <div class="ec-body" id="body-${r.id}">
-          ${r.solucao ? `
-          <div class="detail-section">
-            <div class="detail-label">✅ Como Resolver</div>
-            <div class="detail-text">${escHtml(r.solucao)}</div>
-          </div>` : ""}
-
-          ${r.comoUsar ? `
-          <div class="detail-section">
-            <div class="detail-label">🛠 Como Usar a Ferramenta</div>
-            <div class="detail-text">${escHtml(r.comoUsar)}</div>
-          </div>` : ""}
-
-          ${r.dicas ? `
-          <div class="detail-section">
-            <div class="detail-label">💡 Dicas de Uso</div>
-            <div class="detail-text">${escHtml(r.dicas)}</div>
-          </div>` : ""}
-
-          <div class="ec-actions">
-            <button class="btn btn-secondary btn-sm" onclick="editar('${r.id}')">✏️ Editar</button>
-            <button class="btn btn-danger btn-sm" onclick="confirmarExcluir('${r.id}')">🗑 Excluir</button>
-            ${r.atualizadoEm !== r.criadoEm
-              ? `<span style="font-size:.7rem;color:#aaa;margin-left:auto;align-self:center">Atualizado ${formatarData(r.atualizadoEm)}</span>`
-              : ""}
-          </div>
+  return `
+    <div class="erro-card">
+      <div class="card-top">
+        <div class="card-badges">${bFerr}${bBase}</div>
+        <div class="card-actions">
+          <button class="btn-icon btn-edit" data-id="${e.id}" title="Editar">✏️</button>
+          <button class="btn-icon danger btn-del" data-id="${e.id}" title="Excluir">🗑️</button>
         </div>
       </div>
-    `).join("");
+
+      <div class="card-erro-text">${esc(e.erro)}</div>
+
+      <div class="card-solucao">
+        <div class="solucao-head">
+          <span class="solucao-label">Solução atual</span>
+          ${vBadge}
+          ${btnHist}
+        </div>
+        <div class="solucao-text">${esc(solAtual?.solucao || "—")}</div>
+        ${indicado}
+      </div>
+
+      ${comoHtml || dicaHtml ? `<div class="card-extra">${comoHtml}${dicaHtml}</div>` : ""}
+
+      <div class="card-footer">
+        <span>${rodape}</span>
+        ${e.atualizadoEm && e.atualizadoEm !== e.criadoEm
+          ? `<span>Atualizado em ${fmtData(e.atualizadoEm)}</span>` : ""}
+      </div>
+    </div>`;
+}
+
+// Escapa HTML
+function esc(s) {
+  if (s == null) return "";
+  return String(s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/\n/g, "<br>");
+}
+
+// ─── Filtro de ferramenta ─────────────────────────────────────────────────
+function atualizarFiltroFerr() {
+  const sel = document.getElementById("filtro-ferr");
+  const atual = sel.value;
+  const ferrs = [...new Set(erros.map(e => e.ferramenta).filter(Boolean))].sort();
+  sel.innerHTML = `<option value="">Todas ferramentas</option>` +
+    ferrs.map(f => `<option value="${esc(f)}"${f === atual ? " selected" : ""}>${esc(f)}</option>`).join("");
+}
+
+document.getElementById("busca").addEventListener("input", renderLista);
+document.getElementById("filtro-ferr").addEventListener("change", renderLista);
+
+// ─── Modal: histórico ─────────────────────────────────────────────────────
+function abrirHistorico(e) {
+  document.getElementById("hist-erro-ref").innerHTML =
+    `<strong>Erro:</strong>${esc(e.erro)}`;
+
+  const solucoes = (e.solucoes || []).slice().reverse(); // mais recente primeiro
+  const total = solucoes.length;
+
+  document.getElementById("hist-timeline").innerHTML = solucoes.map((s, i) => {
+    const isAtual = i === 0;
+    const numVersao = total - i;
+    return `<div class="tl-item ${isAtual ? "atual" : ""}">
+      <div class="tl-marker">v${numVersao}</div>
+      <div class="tl-content">
+        <div class="tl-meta">
+          <strong>Versão ${numVersao}</strong>${isAtual ? '<span class="badge-atual">✓ Atual</span>' : ""}
+          &nbsp;—&nbsp;${esc(s.indicadoPor || "Anônimo")}
+          ${s.dataIndicacao ? " · " + fmtDataHora(s.dataIndicacao) : ""}
+        </div>
+        <div class="tl-solucao">${esc(s.solucao || "—")}</div>
+      </div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("modal-hist").style.display = "flex";
+}
+
+// ─── Modal: deletar ───────────────────────────────────────────────────────
+document.getElementById("btn-confirmar-del").addEventListener("click", async () => {
+  if (!pendingDelId) return;
+  try {
+    await deletar(pendingDelId);
+    toast("Registro excluído.");
+    if (editId === pendingDelId) limparForm();
+  } catch (err) {
+    toast("Erro ao excluir: " + err.message, "err");
   }
+  pendingDelId = null;
+  document.getElementById("modal-del").style.display = "none";
+});
 
-  function toggleCard(id) {
-    const body   = document.getElementById(`body-${id}`);
-    const toggle = document.getElementById(`toggle-${id}`);
-    const open   = body.classList.toggle("open");
-    toggle.textContent = open ? "▾" : "▸";
+// ─── Modal: configuração Firebase ────────────────────────────────────────
+function abrirConfig() {
+  const cfg = lerConfig();
+  document.getElementById("config-json").value = cfg ? JSON.stringify(cfg, null, 2) : "";
+  document.getElementById("config-err").style.display = "none";
+  document.getElementById("modal-config").style.display = "flex";
+}
+document.getElementById("btn-open-config").addEventListener("click", abrirConfig);
+document.getElementById("btn-banner-config").addEventListener("click", abrirConfig);
+
+document.getElementById("btn-salvar-config").addEventListener("click", () => {
+  const raw = document.getElementById("config-json").value.trim();
+  const errEl = document.getElementById("config-err");
+  try {
+    const cfg = JSON.parse(raw);
+    if (!cfg.projectId || !cfg.apiKey) throw new Error("Campos obrigatórios ausentes: projectId e apiKey.");
+    localStorage.setItem(FB_LS, JSON.stringify(cfg));
+    errEl.style.display = "none";
+    document.getElementById("modal-config").style.display = "none";
+    toast("Configuração salva! Recarregando...");
+    setTimeout(() => location.reload(), 900);
+  } catch (e) {
+    errEl.textContent = "⚠️ " + e.message;
+    errEl.style.display = "";
   }
+});
 
-  // ── Filtro de ferramentas ─────────────────────────────────────────
-  function atualizarFiltroFerramentas() {
-    const sel = document.getElementById("filter-ferramenta");
-    const atual = sel.value;
-    const ferramentas = [...new Set(registros.map(r => r.ferramenta).filter(Boolean))].sort();
-    sel.innerHTML = `<option value="">Todas as ferramentas</option>` +
-      ferramentas.map(f => `<option value="${escHtml(f)}" ${f.toLowerCase() === atual ? "selected" : ""}>${escHtml(f)}</option>`).join("");
+document.getElementById("btn-limpar-config").addEventListener("click", () => {
+  if (confirm("Limpar a configuração Firebase? A página será recarregada.")) {
+    localStorage.removeItem(FB_LS);
+    location.reload();
   }
+});
 
-  // ── Export / Import ───────────────────────────────────────────────
-  function exportarJson() {
-    if (!registros.length) { flash("⚠ Nenhum registro para exportar."); return; }
-    const blob = new Blob([JSON.stringify(registros, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `erros-solucoes-tce-${new Date().toISOString().slice(0,10)}.json`;
-    a.click();
-    flash("⬇ Exportado com sucesso!");
+// ─── Fechar modais ────────────────────────────────────────────────────────
+document.querySelectorAll("[data-close]").forEach(btn =>
+  btn.addEventListener("click", () => {
+    document.getElementById(btn.dataset.close).style.display = "none";
+  })
+);
+document.querySelectorAll(".modal-overlay").forEach(overlay =>
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.style.display = "none"; })
+);
+
+// ─── Inicialização ────────────────────────────────────────────────────────
+(function init() {
+  const cfg = lerConfig();
+  if (cfg) {
+    document.getElementById("setup-banner").style.display = "none";
+    initFirebase(cfg);
+  } else {
+    document.getElementById("setup-banner").style.display = "";
+    setStatus("error", "Não configurado");
+    document.getElementById("lista").innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🔥</div>
+        <p>Configure o Firebase para começar a usar.<br>Clique em <strong>⚙️ Firebase</strong> no topo.</p>
+      </div>`;
   }
-
-  function importarJson(evt) {
-    const file = evt.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-      try {
-        const dados = JSON.parse(e.target.result);
-        if (!Array.isArray(dados)) throw new Error("Formato inválido");
-        const novos = dados.filter(d => !registros.find(r => r.id === d.id));
-        registros = [...registros, ...novos];
-        salvarDados();
-        atualizarFiltroFerramentas();
-        renderLista();
-        flash(`⬆ ${novos.length} registro(s) importado(s)!`);
-      } catch { flash("⚠ Arquivo inválido."); }
-    };
-    reader.readAsText(file);
-    evt.target.value = "";
-  }
-
-  // ── Utilitários ───────────────────────────────────────────────────
-  function escHtml(s) {
-    return String(s || "")
-      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-  }
-
-  function formatarData(iso) {
-    if (!iso) return "";
-    try {
-      return new Date(iso).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric" });
-    } catch { return ""; }
-  }
-
-  let toastTimer = null;
-  function flash(msg) {
-    const t = document.getElementById("toast");
-    t.textContent = msg;
-    t.classList.add("show");
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
-  }
-
-  // Fecha modal ao clicar fora
-  document.getElementById("modal-excluir").addEventListener("click", e => {
-    if (e.target === e.currentTarget) fecharModal();
-  });
-
-  // Enter no campo erro vai para solução
-  document.getElementById("f-erro").addEventListener("keydown", e => {
-    if (e.key === "Enter") { e.preventDefault(); document.getElementById("f-solucao").focus(); }
-  });
-
-  // ── Init ─────────────────────────────────────────────────────────
-  atualizarFiltroFerramentas();
-  renderLista();
+})();
 </script>
 </body>
 </html>
