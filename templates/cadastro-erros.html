@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastro de Erros e Soluções — e-Sfinge TCE/SC</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:       #1a3a6b;
+      --blue-mid:   #1e4a8a;
+      --blue-light: #e8f0fe;
+      --green:      #15803d;
+      --green-bg:   #dcfce7;
+      --red:        #991b1b;
+      --red-bg:     #fee2e2;
+      --amber:      #92400e;
+      --amber-bg:   #fef3c7;
+      --gray:       #6b7280;
+      --gray-bg:    #f0f2f5;
+      --border:     #e2e8f0;
+      --shadow:     0 2px 10px rgba(0,0,0,.07);
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--gray-bg);
+      min-height: 100vh;
+      color: #1a1a2e;
+    }
+
+    /* ── Topbar ── */
+    .topbar {
+      background: var(--blue);
+      color: #fff;
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9rem;
+    }
+    .topbar a { color: rgba(255,255,255,.7); text-decoration: none; font-size: 0.82rem; }
+    .topbar a:hover { color: #fff; }
+    .topbar-sep { color: rgba(255,255,255,.3); margin: 0 4px; }
+    .topbar-title { font-weight: 700; }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      gap: 20px;
+      max-width: 1200px;
+      margin: 24px auto;
+      padding: 0 20px 48px;
+      align-items: start;
+    }
+
+    @media (max-width: 860px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    /* ── Painel Formulário ── */
+    .form-panel {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: sticky;
+      top: 20px;
+    }
+
+    .form-header {
+      background: var(--blue);
+      color: #fff;
+      padding: 18px 22px;
+    }
+    .form-header h2 { font-size: 1rem; font-weight: 700; }
+    .form-header p  { font-size: 0.78rem; opacity: .75; margin-top: 4px; }
+
+    .form-body { padding: 20px 22px; }
+
+    .field { margin-bottom: 14px; }
+    .field:last-of-type { margin-bottom: 0; }
+
+    label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #555;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    label .req { color: #e53e3e; margin-left: 2px; }
+
+    input[type=text], textarea, select {
+      width: 100%;
+      padding: 8px 11px;
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      font-size: 0.88rem;
+      color: #1a1a2e;
+      background: #fafbfc;
+      font-family: inherit;
+      transition: border-color .2s, background .2s;
+      resize: vertical;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--blue);
+      background: #fff;
+    }
+    textarea { min-height: 72px; }
+    textarea.tall { min-height: 90px; }
+
+    .char-hint { font-size: 0.68rem; color: #aaa; margin-top: 3px; text-align: right; }
+
+    .form-footer {
+      padding: 16px 22px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn { border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer; padding: 9px 16px; transition: .15s; }
+    .btn-primary { background: var(--blue); color: #fff; flex: 1; }
+    .btn-primary:hover { background: var(--blue-mid); }
+    .btn-secondary { background: #f1f5f9; color: #374151; }
+    .btn-secondary:hover { background: #e2e8f0; }
+    .btn-danger { background: var(--red-bg); color: var(--red); }
+    .btn-danger:hover { background: #fecaca; }
+    .btn-sm { padding: 5px 10px; font-size: 0.75rem; border-radius: 6px; }
+
+    /* ── Painel Lista ── */
+    .list-panel { display: flex; flex-direction: column; gap: 14px; }
+
+    .list-topbar {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .list-topbar h2 { font-size: 0.95rem; font-weight: 700; color: var(--blue); flex: 1; min-width: 120px; }
+
+    .search-wrap { flex: 2; min-width: 180px; position: relative; }
+    .search-wrap input {
+      padding-left: 32px;
+      background: #f8fafc;
+    }
+    .search-icon {
+      position: absolute; left: 10px; top: 50%;
+      transform: translateY(-50%);
+      color: #9ca3af; font-size: 0.9rem; pointer-events: none;
+    }
+
+    .filter-select { width: auto; min-width: 140px; flex-shrink: 0; }
+
+    .topbar-actions { display: flex; gap: 6px; flex-shrink: 0; }
+    .btn-icon { background: #f1f5f9; border: none; border-radius: 7px; padding: 7px 11px; cursor: pointer; font-size: 0.82rem; color: #374151; font-weight: 600; }
+    .btn-icon:hover { background: #e2e8f0; }
+
+    /* ── Cards de erro ── */
+    .empty-state {
+      background: #fff;
+      border-radius: 12px;
+      padding: 48px 24px;
+      text-align: center;
+      color: #aaa;
+      box-shadow: var(--shadow);
+    }
+    .empty-state .es-icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.88rem; }
+
+    .error-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      border-left: 4px solid var(--blue);
+      overflow: hidden;
+      transition: box-shadow .15s;
+    }
+    .error-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,.10); }
+
+    .ec-header {
+      padding: 14px 18px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .ec-main { flex: 1; min-width: 0; }
+    .ec-title { font-size: 0.95rem; font-weight: 700; color: #1a1a2e; word-break: break-word; }
+    .ec-meta {
+      display: flex; flex-wrap: wrap; gap: 8px;
+      margin-top: 6px;
+    }
+    .meta-chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 0.72rem; color: #555;
+    }
+    .meta-chip .chip-icon { font-size: 0.75rem; }
+
+    .tag-ferramenta {
+      display: inline-block;
+      background: var(--blue-light);
+      color: var(--blue);
+      border-radius: 99px;
+      padding: 2px 10px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+    .tag-base {
+      display: inline-block;
+      background: var(--amber-bg);
+      color: var(--amber);
+      border-radius: 99px;
+      padding: 2px 10px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .ec-toggle { color: #9ca3af; font-size: 0.85rem; flex-shrink: 0; padding-top: 2px; }
+
+    .ec-body {
+      display: none;
+      padding: 0 18px 16px;
+      border-top: 1px solid #f1f5f9;
+    }
+    .ec-body.open { display: block; }
+
+    .detail-section { margin-top: 14px; }
+    .detail-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #9ca3af;
+      margin-bottom: 5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .detail-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #f1f5f9;
+    }
+    .detail-text {
+      font-size: 0.83rem;
+      color: #374151;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+
+    .ec-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    /* ── Notificação toast ── */
+    #toast {
+      position: fixed;
+      bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1a1a2e;
+      color: #fff;
+      padding: 10px 22px;
+      border-radius: 99px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      box-shadow: 0 4px 20px rgba(0,0,0,.2);
+      transition: transform .3s ease;
+      pointer-events: none;
+      z-index: 999;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ── Modal confirmação ── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: #fff;
+      border-radius: 14px;
+      padding: 28px 28px 22px;
+      max-width: 380px;
+      width: 90%;
+      box-shadow: 0 8px 40px rgba(0,0,0,.2);
+    }
+    .modal-box h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .modal-box p  { font-size: 0.85rem; color: #555; margin-bottom: 20px; line-height: 1.5; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* ── Contador ── */
+    .count-badge {
+      background: var(--blue);
+      color: #fff;
+      border-radius: 99px;
+      padding: 1px 8px;
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <a href="./">← Central de Apoio</a>
+  <span class="topbar-sep">/</span>
+  <span class="topbar-title">Cadastro de Erros e Soluções</span>
+</div>
+
+<div class="layout">
+
+  <!-- ── Formulário ── -->
+  <div class="form-panel" id="form-panel">
+    <div class="form-header">
+      <h2 id="form-title">➕ Novo Registro</h2>
+      <p id="form-subtitle">Preencha as informações do erro e sua solução</p>
+    </div>
+
+    <div class="form-body">
+      <input type="hidden" id="edit-id">
+
+      <div class="field">
+        <label>Erro <span class="req">*</span></label>
+        <input type="text" id="f-erro" placeholder="Nome ou descrição do erro" maxlength="200">
+      </div>
+
+      <div class="field">
+        <label>Quem Registrou</label>
+        <input type="text" id="f-registrado-por" placeholder="Seu nome ou equipe">
+      </div>
+
+      <div class="field">
+        <label>Ocorre na Base / Módulo</label>
+        <input type="text" id="f-base" placeholder="ex: Cadastro Imobiliário, IPTU, ITBI...">
+      </div>
+
+      <div class="field">
+        <label>Como Resolver <span class="req">*</span></label>
+        <textarea class="tall" id="f-solucao" placeholder="Descreva o passo a passo para resolver o erro..."></textarea>
+      </div>
+
+      <div class="field">
+        <label>Ferramenta que Resolve</label>
+        <input type="text" id="f-ferramenta" placeholder="ex: e-Sfinge, Betha Tributário, SQL, Excel...">
+      </div>
+
+      <div class="field">
+        <label>Como Usar a Ferramenta</label>
+        <textarea id="f-como-usar" placeholder="Passo a passo de como usar a ferramenta para resolver..."></textarea>
+      </div>
+
+      <div class="field">
+        <label>Dicas de Uso</label>
+        <textarea id="f-dicas" placeholder="Dicas, atalhos, cuidados ou observações importantes..."></textarea>
+      </div>
+    </div>
+
+    <div class="form-footer">
+      <button class="btn btn-secondary btn-sm" id="btn-cancelar" onclick="cancelarEdicao()" style="display:none">Cancelar</button>
+      <button class="btn btn-primary" id="btn-salvar" onclick="salvar()">💾 Salvar Registro</button>
+    </div>
+  </div>
+
+  <!-- ── Lista ── -->
+  <div class="list-panel">
+
+    <div class="list-topbar">
+      <h2>Base de Conhecimento <span class="count-badge" id="count-badge">0</span></h2>
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="search-input" placeholder="Buscar erro, ferramenta, base..." oninput="renderLista()">
+      </div>
+      <select class="filter-select" id="filter-ferramenta" onchange="renderLista()">
+        <option value="">Todas as ferramentas</option>
+      </select>
+      <div class="topbar-actions">
+        <button class="btn-icon" onclick="exportarJson()" title="Exportar JSON">⬇ Exportar</button>
+        <button class="btn-icon" onclick="document.getElementById('import-file').click()" title="Importar JSON">⬆ Importar</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importarJson(event)">
+      </div>
+    </div>
+
+    <div id="lista-container"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- Modal confirmação de exclusão -->
+<div class="modal-overlay" id="modal-excluir">
+  <div class="modal-box">
+    <h3>Excluir registro?</h3>
+    <p id="modal-msg">Esta ação não pode ser desfeita.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary btn-sm" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-danger btn-sm" id="btn-confirmar-excluir">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = "tce-erros-cadastro-v1";
+  let registros = carregarDados();
+  let excluirIdPendente = null;
+
+  // ── Persistência ─────────────────────────────────────────────────
+  function carregarDados() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); }
+    catch { return []; }
+  }
+  function salvarDados() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(registros));
+  }
+
+  // ── CRUD ─────────────────────────────────────────────────────────
+  function salvar() {
+    const erro     = document.getElementById("f-erro").value.trim();
+    const solucao  = document.getElementById("f-solucao").value.trim();
+
+    if (!erro)    { flash("⚠ Informe o erro."); document.getElementById("f-erro").focus(); return; }
+    if (!solucao) { flash("⚠ Informe como resolver."); document.getElementById("f-solucao").focus(); return; }
+
+    const editId = document.getElementById("edit-id").value;
+
+    const registro = {
+      id:             editId || crypto.randomUUID(),
+      erro,
+      registradoPor:  document.getElementById("f-registrado-por").value.trim(),
+      base:           document.getElementById("f-base").value.trim(),
+      solucao,
+      ferramenta:     document.getElementById("f-ferramenta").value.trim(),
+      comoUsar:       document.getElementById("f-como-usar").value.trim(),
+      dicas:          document.getElementById("f-dicas").value.trim(),
+      criadoEm:       editId ? (registros.find(r => r.id === editId)?.criadoEm || new Date().toISOString()) : new Date().toISOString(),
+      atualizadoEm:   new Date().toISOString(),
+    };
+
+    if (editId) {
+      const idx = registros.findIndex(r => r.id === editId);
+      if (idx > -1) registros[idx] = registro;
+    } else {
+      registros.unshift(registro);
+    }
+
+    salvarDados();
+    limparFormulario();
+    atualizarFiltroFerramentas();
+    renderLista();
+    flash(editId ? "✓ Registro atualizado!" : "✓ Registro salvo!");
+
+    // Rola para o card recém criado/editado
+    setTimeout(() => {
+      const card = document.getElementById(`card-${registro.id}`);
+      if (card) card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 100);
+  }
+
+  function editar(id) {
+    const r = registros.find(r => r.id === id);
+    if (!r) return;
+    document.getElementById("edit-id").value             = id;
+    document.getElementById("f-erro").value              = r.erro;
+    document.getElementById("f-registrado-por").value    = r.registradoPor;
+    document.getElementById("f-base").value              = r.base;
+    document.getElementById("f-solucao").value           = r.solucao;
+    document.getElementById("f-ferramenta").value        = r.ferramenta;
+    document.getElementById("f-como-usar").value         = r.comoUsar;
+    document.getElementById("f-dicas").value             = r.dicas;
+
+    document.getElementById("form-title").textContent    = "✏️ Editar Registro";
+    document.getElementById("form-subtitle").textContent = r.erro.slice(0, 60) + (r.erro.length > 60 ? "…" : "");
+    document.getElementById("btn-cancelar").style.display = "";
+    document.getElementById("btn-salvar").textContent    = "💾 Atualizar";
+
+    document.getElementById("form-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function cancelarEdicao() {
+    limparFormulario();
+    flash("Edição cancelada.");
+  }
+
+  function limparFormulario() {
+    ["edit-id","f-erro","f-registrado-por","f-base","f-solucao","f-ferramenta","f-como-usar","f-dicas"]
+      .forEach(id => document.getElementById(id).value = "");
+    document.getElementById("form-title").textContent    = "➕ Novo Registro";
+    document.getElementById("form-subtitle").textContent = "Preencha as informações do erro e sua solução";
+    document.getElementById("btn-cancelar").style.display = "none";
+    document.getElementById("btn-salvar").textContent    = "💾 Salvar Registro";
+  }
+
+  function confirmarExcluir(id) {
+    const r = registros.find(r => r.id === id);
+    excluirIdPendente = id;
+    document.getElementById("modal-msg").textContent = `Deseja excluir o registro "${r?.erro?.slice(0,60)}"?`;
+    document.getElementById("btn-confirmar-excluir").onclick = () => excluir(id);
+    document.getElementById("modal-excluir").classList.add("open");
+  }
+
+  function excluir(id) {
+    registros = registros.filter(r => r.id !== id);
+    salvarDados();
+    fecharModal();
+    atualizarFiltroFerramentas();
+    renderLista();
+    flash("🗑 Registro excluído.");
+    if (document.getElementById("edit-id").value === id) limparFormulario();
+  }
+
+  function fecharModal() {
+    document.getElementById("modal-excluir").classList.remove("open");
+    excluirIdPendente = null;
+  }
+
+  // ── Renderização da lista ─────────────────────────────────────────
+  function renderLista() {
+    const busca = document.getElementById("search-input").value.toLowerCase();
+    const filtroFerr = document.getElementById("filter-ferramenta").value.toLowerCase();
+
+    const filtrados = registros.filter(r => {
+      const texto = [r.erro, r.base, r.solucao, r.ferramenta, r.registradoPor, r.comoUsar, r.dicas]
+        .join(" ").toLowerCase();
+      const matchBusca = !busca || texto.includes(busca);
+      const matchFerr  = !filtroFerr || r.ferramenta.toLowerCase() === filtroFerr;
+      return matchBusca && matchFerr;
+    });
+
+    document.getElementById("count-badge").textContent = filtrados.length;
+    const container = document.getElementById("lista-container");
+
+    if (filtrados.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="es-icon">${registros.length === 0 ? "📝" : "🔍"}</div>
+          <p>${registros.length === 0
+            ? "Nenhum registro ainda.<br>Use o formulário ao lado para cadastrar o primeiro erro."
+            : "Nenhum resultado para esta busca."
+          }</p>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = filtrados.map(r => `
+      <div class="error-card" id="card-${r.id}">
+        <div class="ec-header" onclick="toggleCard('${r.id}')">
+          <div class="ec-main">
+            <div class="ec-title">${escHtml(r.erro)}</div>
+            <div class="ec-meta">
+              ${r.ferramenta ? `<span class="tag-ferramenta">🔧 ${escHtml(r.ferramenta)}</span>` : ""}
+              ${r.base       ? `<span class="tag-base">📂 ${escHtml(r.base)}</span>` : ""}
+              ${r.registradoPor ? `<span class="meta-chip"><span class="chip-icon">👤</span> ${escHtml(r.registradoPor)}</span>` : ""}
+              <span class="meta-chip"><span class="chip-icon">📅</span> ${formatarData(r.criadoEm)}</span>
+            </div>
+          </div>
+          <span class="ec-toggle" id="toggle-${r.id}">▸</span>
+        </div>
+
+        <div class="ec-body" id="body-${r.id}">
+          ${r.solucao ? `
+          <div class="detail-section">
+            <div class="detail-label">✅ Como Resolver</div>
+            <div class="detail-text">${escHtml(r.solucao)}</div>
+          </div>` : ""}
+
+          ${r.comoUsar ? `
+          <div class="detail-section">
+            <div class="detail-label">🛠 Como Usar a Ferramenta</div>
+            <div class="detail-text">${escHtml(r.comoUsar)}</div>
+          </div>` : ""}
+
+          ${r.dicas ? `
+          <div class="detail-section">
+            <div class="detail-label">💡 Dicas de Uso</div>
+            <div class="detail-text">${escHtml(r.dicas)}</div>
+          </div>` : ""}
+
+          <div class="ec-actions">
+            <button class="btn btn-secondary btn-sm" onclick="editar('${r.id}')">✏️ Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="confirmarExcluir('${r.id}')">🗑 Excluir</button>
+            ${r.atualizadoEm !== r.criadoEm
+              ? `<span style="font-size:.7rem;color:#aaa;margin-left:auto;align-self:center">Atualizado ${formatarData(r.atualizadoEm)}</span>`
+              : ""}
+          </div>
+        </div>
+      </div>
+    `).join("");
+  }
+
+  function toggleCard(id) {
+    const body   = document.getElementById(`body-${id}`);
+    const toggle = document.getElementById(`toggle-${id}`);
+    const open   = body.classList.toggle("open");
+    toggle.textContent = open ? "▾" : "▸";
+  }
+
+  // ── Filtro de ferramentas ─────────────────────────────────────────
+  function atualizarFiltroFerramentas() {
+    const sel = document.getElementById("filter-ferramenta");
+    const atual = sel.value;
+    const ferramentas = [...new Set(registros.map(r => r.ferramenta).filter(Boolean))].sort();
+    sel.innerHTML = `<option value="">Todas as ferramentas</option>` +
+      ferramentas.map(f => `<option value="${escHtml(f)}" ${f.toLowerCase() === atual ? "selected" : ""}>${escHtml(f)}</option>`).join("");
+  }
+
+  // ── Export / Import ───────────────────────────────────────────────
+  function exportarJson() {
+    if (!registros.length) { flash("⚠ Nenhum registro para exportar."); return; }
+    const blob = new Blob([JSON.stringify(registros, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `erros-solucoes-tce-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    flash("⬇ Exportado com sucesso!");
+  }
+
+  function importarJson(evt) {
+    const file = evt.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const dados = JSON.parse(e.target.result);
+        if (!Array.isArray(dados)) throw new Error("Formato inválido");
+        const novos = dados.filter(d => !registros.find(r => r.id === d.id));
+        registros = [...registros, ...novos];
+        salvarDados();
+        atualizarFiltroFerramentas();
+        renderLista();
+        flash(`⬆ ${novos.length} registro(s) importado(s)!`);
+      } catch { flash("⚠ Arquivo inválido."); }
+    };
+    reader.readAsText(file);
+    evt.target.value = "";
+  }
+
+  // ── Utilitários ───────────────────────────────────────────────────
+  function escHtml(s) {
+    return String(s || "")
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function formatarData(iso) {
+    if (!iso) return "";
+    try {
+      return new Date(iso).toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric" });
+    } catch { return ""; }
+  }
+
+  let toastTimer = null;
+  function flash(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
+  }
+
+  // Fecha modal ao clicar fora
+  document.getElementById("modal-excluir").addEventListener("click", e => {
+    if (e.target === e.currentTarget) fecharModal();
+  });
+
+  // Enter no campo erro vai para solução
+  document.getElementById("f-erro").addEventListener("keydown", e => {
+    if (e.key === "Enter") { e.preventDefault(); document.getElementById("f-solucao").focus(); }
+  });
+
+  // ── Init ─────────────────────────────────────────────────────────
+  atualizarFiltroFerramentas();
+  renderLista();
+</script>
+</body>
+</html>
