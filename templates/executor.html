@@ -145,11 +145,9 @@
     </div>
   </div>
 
-  <!-- Card 2: Configuração da Execução -->
+  <!-- Card 2: Competência -->
   <div class="card">
-    <h2><span class="step-badge">2</span> Configuração da Execução</h2>
-
-    <!-- Competência -->
+    <h2><span class="step-badge">2</span> Competência</h2>
     <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:6px">
       <div class="field" style="margin:0;width:160px">
         <label>Mês de competência</label>
@@ -168,9 +166,13 @@
       </div>
       <button class="btn btn-ghost" onclick="consultarEncerramento()" style="margin-bottom:1px">📅 Consultar encerramentos</button>
     </div>
-    <div class="info-tag" id="encerramento-info" style="margin-bottom:12px"></div>
+    <div class="info-tag" id="encerramento-info"></div>
+  </div>
 
-    <!-- Etapa inicial -->
+  <!-- Card 3: Configuração da Execução -->
+  <div class="card">
+    <h2><span class="step-badge">3</span> Configuração da Execução</h2>
+
     <div class="field">
       <label>Iniciar na etapa (opcional)</label>
       <select id="etapa-inicial">
@@ -178,7 +180,6 @@
       </select>
     </div>
 
-    <!-- Assunto inicial -->
     <div class="field">
       <label>Iniciar no assunto — somente se iniciar na etapa 01 (opcional)</label>
       <select id="assunto-inicial">
@@ -186,7 +187,6 @@
       </select>
     </div>
 
-    <!-- Visibilidade -->
     <label class="check-row" style="margin-top:6px">
       <input type="checkbox" id="visibilidade" checked>
       Visibilidade da execução pública
@@ -678,7 +678,12 @@ async function consultarEncerramento() {
                        (abr.length ? `  |  📂 Abertos: ${abr.join(', ')}` : '');
     info.className   = 'info-tag ok';
   } catch (e) {
-    info.textContent = `Erro: ${e.message}`; info.className = 'info-tag err';
+    if (e.name === 'TypeError' || e.message === 'Failed to fetch') {
+      info.textContent = 'ℹ️ Consulta indisponível externamente — verifique os encerramentos diretamente no sistema Betha.';
+      info.className = 'info-tag';
+    } else {
+      info.textContent = `Erro: ${e.message}`; info.className = 'info-tag err';
+    }
   }
 }
 
