@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Executor e-Sfinge — TCE/SC</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <!-- JSZip: análise de ZIPs de validação no browser -->
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -227,16 +225,8 @@
 
 <script>
 /* ══════════════════════════════════════════════
-   CONSTANTES — portadas de executar_esfinge.py
+   CONSTANTES (para popular selects)
 ══════════════════════════════════════════════ */
-const BASE_URL         = 'https://tributos.suite.betha.cloud/extensoes/scripts';
-const STATUS_URL       = 'https://plataforma-execucoes-v2.betha.cloud/api/consulta';
-const DOWNLOAD_URL     = 'https://plataforma-execucoes.betha.cloud/v1/download/api/execucoes';
-const LICENSES_URL     = 'https://plataforma-licencas.betha.cloud/licenses/v0.1/api';
-const ENCERRAMENTO_URL = 'https://tributos.suite.betha.cloud/dados/v1/encerramento-mensal';
-const POLLING_MS       = 20_000;
-const MAX_RETRIES      = 5;
-
 const ASSUNTOS_ETAPA_01 = [
   ['saldosIniciaisCreditoTributario',              '[00] Saldo Inicial de Créditos Tributários'],
   ['cadastrosContribuintes',                        '[01] Cadastro Contribuinte'],
@@ -268,345 +258,40 @@ const ETAPAS = [
 const LS_HISTORY = 'esfinge-executor-cred-v1';
 
 /* ══════════════════════════════════════════════
-   CLASSE EXECUTOR (JavaScript)
+   ESTADO
 ══════════════════════════════════════════════ */
-class EsfingeExecutor {
-  constructor({ authorization, userAccess, competencia, etapaInicial = 1, assuntoInicial = 0,
-                visibilidadePublica = true, enviarEmail = false, emailsNotificar = [],
-                onLog, onStatus, onProgress }) {
-    this.authorization    = authorization;
-    this.userAccess       = userAccess;
-    this.competencia      = competencia;
-    this.etapaInicial     = etapaInicial;
-    this.assuntoInicial   = assuntoInicial;
-    this.visibilidade     = visibilidadePublica;
-    this.enviarEmail      = enviarEmail;
-    this.emailsNotificar  = emailsNotificar;
-    this.onLog            = onLog    || (() => {});
-    this.onStatus         = onStatus || (() => {});
-    this.onProgress       = onProgress || (() => {});
-    this._stop            = false;
-    this.relatorio        = { inicio: new Date().toISOString(), etapasOk: [], etapaErro: null, detalheErro: null, status: 'em_execucao' };
-  }
-
-  stop() { this._stop = true; }
-
-  _headers() {
-    return {
-      'Content-Type':  'application/json',
-      'User-Access':   this.userAccess,
-      'Authorization': `bearer ${this.authorization}`,
-    };
-  }
-
-  async _post(identificador, payload) {
-    const url = `${BASE_URL}/${identificador}/executar/?visibilidadeExecucaoPublica=${this.visibilidade}`;
-    const body = {
-      ...payload,
-      visibilidadeExecucaoPublica: this.visibilidade,
-      enviarEmailFinalizar:        this.enviarEmail,
-      emailsParaNotificar:         this.enviarEmail ? this.emailsNotificar : [],
-    };
-    let ultimoErro;
-    for (let t = 1; t <= MAX_RETRIES; t++) {
-      try {
-        const resp = await fetch(url, { method: 'POST', headers: this._headers(), body: JSON.stringify(body) });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${(await resp.text()).substring(0, 300)}`);
-        const data = await resp.json();
-        const protocolo = data.codigoExecucao;
-        if (!protocolo) throw new Error(`Sem codigoExecucao: ${JSON.stringify(data).substring(0, 300)}`);
-        return protocolo;
-      } catch (e) {
-        ultimoErro = e;
-        if (t < MAX_RETRIES) {
-          this.onLog(`  ⚠️ Erro de rede (tentativa ${t}/${MAX_RETRIES}): ${e.message}`);
-          await sleep(10_000);
-        }
-      }
-    }
-    throw new Error(`Falha após ${MAX_RETRIES} tentativas: ${ultimoErro?.message}`);
-  }
-
-  async _consultarStatus(protocolo) {
-    try {
-      const resp = await fetch(`${STATUS_URL}/${protocolo}`, { headers: this._headers() });
-      if (resp.status === 404) return ['processando', false];
-      if (resp.status >= 500) { this.onLog(`  ⚠️ Servidor HTTP ${resp.status} — retentando`); return ['processando', false]; }
-      if (!resp.ok) return ['erro', false];
-      const data = await resp.json();
-      if (!data.concluida) return ['processando', false];
-      const conclusao = typeof data.tipoConclusao === 'object' ? data.tipoConclusao?.value : String(data.tipoConclusao || '');
-      if (['CANCELADO', 'ERRO', 'FALHA'].includes(conclusao)) return ['erro', false];
-      return ['concluida', !!data.gerouResultado];
-    } catch (e) {
-      this.onLog(`  ⚠️ Timeout/conexão na consulta — retentando`);
-      return ['processando', false];
-    }
-  }
-
-  async _baixarZip(protocolo) {
-    try {
-      const resp = await fetch(`${DOWNLOAD_URL}/${protocolo}/resultado`, { headers: this._headers() });
-      if (!resp.ok || !resp.body) { this.onLog(`  ⚠️ Download HTTP ${resp.status}`); return null; }
-      return await resp.arrayBuffer();
-    } catch (e) {
-      this.onLog(`  ⚠️ Erro ao baixar: ${e.message}`);
-      return null;
-    }
-  }
-
-  async _verificarErros(zipBuffer) {
-    if (!zipBuffer) return [];
-    // Verificar magic bytes ZIP (PK\x03\x04)
-    const bytes = new Uint8Array(zipBuffer.slice(0, 4));
-    if (bytes[0] !== 0x50 || bytes[1] !== 0x4B || bytes[2] !== 0x03 || bytes[3] !== 0x04) return [];
-
-    const erros = [];
-    try {
-      const zip = await JSZip.loadAsync(zipBuffer);
-      for (const [nome, file] of Object.entries(zip.files)) {
-        if (!nome.endsWith('.html')) continue;
-        const html = await file.async('string');
-
-        // Estratégia 1: IDs qtdErroN
-        let totalErros = 0;
-        for (const m of html.matchAll(/id="qtdErro\d*"[^>]*>(\d+)/g)) totalErros += parseInt(m[1]);
-        if (totalErros > 0) {
-          erros.push(`[${nome}] ${totalErros} erro(s) no relatório`);
-          for (const m of html.matchAll(/class="table-danger"[\s\S]{0,300}?<td[^>]*>Erro<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>/g)) {
-            const desc = m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 200);
-            if (desc) erros.push(`  → ${desc}`);
-          }
-          continue;
-        }
-        // Estratégia 2: table-danger
-        if ((html.match(/class="table-danger"/g) || []).length > 0) {
-          erros.push(`[${nome}] erro(s) detectado(s)`);
-        }
-      }
-    } catch (e) {
-      erros.push(`CRÍTICO: Falha ao analisar ZIP — ${e.message}`);
-    }
-    return erros;
-  }
-
-  _zipTemCorrecoesSucesso(html) {
-    return html.includes('foram corrigidos com sucesso');
-  }
-
-  async _aguardar(protocolo, desc) {
-    const inicio = Date.now();
-    let tentativa = 0;
-    while (!this._stop) {
-      tentativa++;
-      const elapsed = Math.floor((Date.now() - inicio) / 1000);
-      const m = Math.floor(elapsed / 60), s = elapsed % 60;
-      this.onLog(`  ⏳ [${tentativa}] Consultando '${desc}' (${m}m${s}s)...`);
-      const [status, gerouResultado] = await this._consultarStatus(protocolo);
-      if (status === 'concluida') {
-        if (gerouResultado) {
-          this.onLog(`  📦 Concluído com resultado — baixando...`);
-          let zip = await this._baixarZip(protocolo);
-          if (!zip) { await sleep(5_000); zip = await this._baixarZip(protocolo); }
-          return zip;
-        }
-        this.onLog(`  📋 Concluído sem arquivo de resultado`);
-        return null;
-      }
-      if (status === 'erro') throw new Error(`Execução de '${desc}' retornou ERRO (protocolo: ${protocolo})`);
-      await sleep(POLLING_MS);
-    }
-    throw new Error('Interrompido pelo usuário');
-  }
-
-  _buildPayload(assuntoValor, competencia) {
-    return {
-      parametros: {
-        assunto: assuntoValor, competencia, tipoEnvio: 'MANUAL', validarGerar: '1',
-        opcaoAbertosInscritos: 'TODOS', intervaloLancamento: '1', limparDadosExistentes: 'SIM',
-        tipoLancamento: 'TODOS', tipoBaixa: 'TODOS', enviarTodosAssuntos: 'NAO',
-        descarte: 'NAO', usuario: 'gerarDados', senha: 'gerarDados',
-      }
-    };
-  }
-
-  async _executarEtapa01(etapa) {
-    let assuntos = [...ASSUNTOS_ETAPA_01];
-    if (this.assuntoInicial > 0) {
-      this.onLog(`  ⏭️ Pulando assuntos 0 a ${this.assuntoInicial - 1}`);
-      assuntos = assuntos.slice(this.assuntoInicial);
-      this.assuntoInicial = 0; // reset para re-execuções
-    }
-
-    this.onLog('📋 Fase 1 — Disparando POSTs...');
-    const protocolos = [];
-    for (const [val, desc] of assuntos) {
-      if (this._stop) throw new Error('Interrompido pelo usuário');
-      this.onLog(`  🚀 Disparando: ${desc}`);
-      const protocolo = await this._post(etapa.id, this._buildPayload(val, this.competencia));
-      this.onLog(`     Protocolo: ${protocolo}`);
-      protocolos.push([desc, protocolo]);
-    }
-
-    this.onLog(`\n📋 Fase 2 — Monitorando ${protocolos.length} resultados...`);
-    const todosErros = [];
-
-    for (let i = 0; i < protocolos.length; i++) {
-      if (this._stop) throw new Error('Interrompido pelo usuário');
-      const [desc, protocolo] = protocolos[i];
-      this.onLog(`\n  [${i+1}/${protocolos.length}] Aguardando: ${desc}`);
-      const zip = await this._aguardar(protocolo, desc);
-      if (zip) {
-        const erros = await this._verificarErros(zip);
-        if (erros.length) {
-          todosErros.push(...erros);
-          this.onLog(`  🔴 ERRO em ${desc}:`);
-          erros.forEach(e => this.onLog(`     ${e}`));
-        } else {
-          this.onLog(`  ✅ ${desc} — sem erros`);
-        }
-      } else {
-        this.onLog(`  ℹ️ Sem resultado para ${desc}`);
-      }
-    }
-
-    if (todosErros.length) {
-      throw new Error(`Etapa 01: ${todosErros.length} erro(s):\n${todosErros.slice(0,30).join('\n')}`);
-    }
-    this.onLog('\n✅ Etapa 01 concluída — todos os 13 assuntos sem erros.');
-  }
-
-  async _executarEtapaSimples(etapa) {
-    let payload;
-    if (etapa.numero === 2) {
-      payload = { parametros: { competencia: this.competencia, p_assuntos: '["saldosIniciaisCreditoTributario"]', p_tipoExecucao: 'CORRIGIR_REGISTRO_SALDO' } };
-    } else if (etapa.numero === 9) {
-      payload = { parametros: { CONs: '[]', competencia: this.competencia, tipoCON: 'IMPEDITIVA' } };
-    } else {
-      payload = { parametros: { competencia: this.competencia } };
-    }
-
-    this.onLog(`  🚀 Disparando POST...`);
-    const protocolo = await this._post(etapa.id, payload);
-    this.onLog(`     Protocolo: ${protocolo}`);
-
-    const zip = await this._aguardar(protocolo, etapa.nome);
-
-    if (zip) {
-      const erros = await this._verificarErros(zip);
-      if (erros.length) {
-        this.onLog(`  🔴 ERROS encontrados:`);
-        erros.forEach(e => this.onLog(`     ${e}`));
-
-        if (etapa.ignoraErrosSeSucesso) {
-          // Verificar se o ZIP contém mensagem de sucesso
-          try {
-            const jzip = await JSZip.loadAsync(zip);
-            for (const [, file] of Object.entries(jzip.files)) {
-              const html = await file.async('string');
-              if (html.includes('foram corrigidos com sucesso')) {
-                this.onLog(`  ⚠️ Os erros acima indicam registros CORRIGIDOS com sucesso.`);
-                this.onLog(`  ✅ Etapa ${etapa.numero.toString().padStart(2,'0')} — correções aplicadas.`);
-                return;
-              }
-            }
-          } catch {}
-        }
-        throw new Error(`Etapa ${etapa.numero.toString().padStart(2,'0')} (${etapa.nome}): ${erros.length} erro(s)`);
-      }
-      this.onLog(`  ✅ Resultado verificado — ZERO erros.`);
-    } else {
-      if (etapa.geraZip === false) {
-        this.onLog(`  ✅ Execução concluída (etapa não gera arquivo).`);
-      } else if (etapa.geraZip === null) {
-        this.onLog(`  ✅ Concluído — nenhuma inconsistência encontrada.`);
-      } else {
-        throw new Error(`Etapa ${etapa.numero.toString().padStart(2,'0')}: esperava ZIP mas nenhum foi retornado.`);
-      }
-    }
-  }
-
-  async executar() {
-    const etapas = ETAPAS.filter(e => e.numero >= this.etapaInicial);
-    const total  = etapas.length;
-    let concluidas = 0;
-
-    try {
-      for (const etapa of etapas) {
-        if (this._stop) throw new Error('Interrompido pelo usuário');
-
-        this.onStatus(`Etapa ${String(etapa.numero).padStart(2,'0')} — ${etapa.nome}`);
-        this.onProgress(concluidas, total, etapa.nome);
-        this.onLog(`\n${'='.repeat(60)}`);
-        this.onLog(`🔄 ETAPA ${String(etapa.numero).padStart(2,'0')} - ${etapa.nome}`);
-        this.onLog(`   Identificador: ${etapa.id}`);
-        this.onLog('='.repeat(60));
-
-        if (etapa.multi) await this._executarEtapa01(etapa);
-        else             await this._executarEtapaSimples(etapa);
-
-        this.relatorio.etapasOk.push({ numero: etapa.numero, nome: etapa.nome });
-        concluidas++;
-        this.onLog(`\n   ══ Etapa ${String(etapa.numero).padStart(2,'0')} OK — avançando ══`);
-      }
-
-      this.relatorio.status = 'concluido_sucesso';
-      this.onProgress(total, total, '');
-      this.onLog(`\n${'='.repeat(60)}`);
-      this.onLog('🎉 TODAS AS ETAPAS CONCLUÍDAS COM SUCESSO!');
-      this.onLog('='.repeat(60));
-
-    } catch (e) {
-      if (e.message.includes('Interrompido')) {
-        this.relatorio.status = 'interrompido';
-      } else {
-        this.relatorio.status = 'erro';
-        this.relatorio.etapaErro   = this.relatorio.etapasOk.length + 1;
-        this.relatorio.detalheErro = e.message;
-      }
-      this.onLog(`\n${'='.repeat(60)}`);
-      this.onLog(`${e.message.includes('Interrompido') ? '⚠️' : '🔴'} ${e.message}`);
-      this.onLog('='.repeat(60));
-    }
-
-    this.relatorio.fim = new Date().toISOString();
-    return this.relatorio;
-  }
-}
-
-/* ══════════════════════════════════════════════
-   UTILS
-══════════════════════════════════════════════ */
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-/* ══════════════════════════════════════════════
-   ESTADO DA UI
-══════════════════════════════════════════════ */
-let _executor = null;
+let _executionId  = null;
+let _eventSource  = null;
+let _relatorioCache = null;
 
 /* ══════════════════════════════════════════════
    INIT — popular selects e restaurar histórico
 ══════════════════════════════════════════════ */
 (function init() {
-  // Popular select de etapas
+  const etapaNames = [
+    'Gerar Dados (Todos os Assuntos)',
+    'Tratamento - Lançamentos Não Encontrados',
+    'Validação de Vínculos Saldos Iniciais',
+    'Validação de Revisões',
+    'Validação de Cobrança Dívida Ativa',
+    'Validação de Lançamentos',
+    'Validação de Imóveis',
+    'Validação de Contribuintes',
+    'Validação de CONs',
+  ];
   const selEtapa = document.getElementById('etapa-inicial');
-  ETAPAS.forEach(e => {
+  etapaNames.forEach((nome, i) => {
     const opt = document.createElement('option');
-    opt.value = e.numero;
-    opt.textContent = `${String(e.numero).padStart(2,'0')} — ${e.nome}`;
+    opt.value = i + 1;
+    opt.textContent = `${String(i+1).padStart(2,'0')} — ${nome}`;
     selEtapa.appendChild(opt);
   });
-
-  // Popular select de assuntos
-  const selAssunto = document.getElementById('assunto-inicial');
   ASSUNTOS_ETAPA_01.forEach(([, desc], i) => {
     const opt = document.createElement('option');
     opt.value = i;
     opt.textContent = desc;
-    selAssunto.appendChild(opt);
+    document.getElementById('assunto-inicial').appendChild(opt);
   });
-
-  // Restaurar credenciais do localStorage
   try {
     const h = JSON.parse(localStorage.getItem(LS_HISTORY) || '{}');
     if (h.authorization) document.getElementById('authorization').value = h.authorization;
@@ -615,7 +300,7 @@ let _executor = null;
 })();
 
 /* ══════════════════════════════════════════════
-   CONSULTAR ENTIDADE
+   CONSULTAR ENTIDADE — via Flask proxy
 ══════════════════════════════════════════════ */
 async function consultarEntidade() {
   const auth = document.getElementById('authorization').value.trim();
@@ -624,89 +309,71 @@ async function consultarEntidade() {
   if (!auth || !ua) { info.textContent = 'Preencha Authorization e User-Access.'; info.className = 'info-tag err'; return; }
   info.className = 'info-tag'; info.textContent = 'Consultando...';
   try {
-    const resp = await fetch(`${LICENSES_URL}/entidades/atual/`, {
-      headers: { 'Content-Type': 'application/json', 'Authorization': `bearer ${auth}`, 'User-Access': ua }
+    const resp = await fetch('/api/executor/consultar-entidade', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ authorization: auth, userAccess: ua }),
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const d = await resp.json();
-    info.textContent = `📌 ${d.nome || '?'} — ID ${d.id || '?'}`;
+    if (d.erro) throw new Error(d.erro);
+    info.textContent = `📌 ${d.nome} — ID ${d.id}`;
     info.className   = 'info-tag ok';
-    // Salvar no histórico
     localStorage.setItem(LS_HISTORY, JSON.stringify({ authorization: auth, userAccess: ua }));
-    document.getElementById('cors-banner').style.display = 'none';
   } catch (e) {
-    if (e.message.includes('Failed to fetch') || e.name === 'TypeError') {
-      info.textContent = '❌ CORS bloqueado — as APIs Betha não permitem chamadas diretas do browser. Contate o administrador.';
-      document.getElementById('cors-banner').style.display = '';
-    } else {
-      info.textContent = `Erro: ${e.message}`;
-    }
-    info.className = 'info-tag err';
+    info.textContent = `Erro: ${e.message}`; info.className = 'info-tag err';
   }
 }
 
 /* ══════════════════════════════════════════════
-   CONSULTAR ENCERRAMENTOS
+   CONSULTAR ENCERRAMENTOS — via Flask proxy
 ══════════════════════════════════════════════ */
-const MES_MAP = { JANEIRO:'01', FEVEREIRO:'02', MARCO:'03', ABRIL:'04', MAIO:'05', JUNHO:'06', JULHO:'07', AGOSTO:'08', SETEMBRO:'09', OUTUBRO:'10', NOVEMBRO:'11', DEZEMBRO:'12' };
-
 async function consultarEncerramento() {
   const auth = document.getElementById('authorization').value.trim();
   const ua   = document.getElementById('userAccess').value.trim();
   const ano  = document.getElementById('ano').value.trim();
   const info = document.getElementById('encerramento-info');
   if (!auth || !ua) { info.textContent = 'Preencha as credenciais primeiro.'; info.className = 'info-tag err'; return; }
-  if (!ano.match(/^\d{4}$/)) { info.textContent = 'Informe um ano válido.'; info.className = 'info-tag err'; return; }
   info.className = 'info-tag'; info.textContent = 'Consultando...';
   try {
-    // GET não deve ter Content-Type — pode causar CORS preflight desnecessário
-    const resp = await fetch(`${ENCERRAMENTO_URL}/${ano}`, {
-      headers: { 'Authorization': `bearer ${auth}`, 'User-Access': ua }
+    const resp = await fetch('/api/executor/consultar-encerramento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ authorization: auth, userAccess: ua, ano }),
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${(await resp.text()).substring(0,200)}`);
     const data = await resp.json();
+    if (data.erro) throw new Error(data.erro);
+    const MES = { JANEIRO:'Jan', FEVEREIRO:'Fev', MARCO:'Mar', ABRIL:'Abr', MAIO:'Mai', JUNHO:'Jun', JULHO:'Jul', AGOSTO:'Ago', SETEMBRO:'Set', OUTUBRO:'Out', NOVEMBRO:'Nov', DEZEMBRO:'Dez' };
     const items = data.content || data || [];
-    const MES_NOMES = { JANEIRO:'Jan', FEVEREIRO:'Fev', MARCO:'Mar', ABRIL:'Abr', MAIO:'Mai', JUNHO:'Jun', JULHO:'Jul', AGOSTO:'Ago', SETEMBRO:'Set', OUTUBRO:'Out', NOVEMBRO:'Nov', DEZEMBRO:'Dez' };
     const enc = [], abr = [];
     for (const item of items) {
-      const mesValor = item.mes?.valor || item.mes || '';
-      const mesDesc  = MES_NOMES[mesValor] || item.mes?.descricao || mesValor;
-      const encerrado = item.encerrado?.valor === 'SIM' || item.encerrado === true;
-      (encerrado ? enc : abr).push(mesDesc);
+      const mv  = item.mes?.valor || '';
+      const md  = MES[mv] || item.mes?.descricao || mv;
+      (item.encerrado?.valor === 'SIM' ? enc : abr).push(md);
     }
     info.textContent = (enc.length ? `🔒 Encerrados: ${enc.join(', ')}` : '✅ Nenhum mês encerrado') +
-                       (abr.length ? `  |  📂 Abertos: ${abr.join(', ')}` : '');
-    info.className   = 'info-tag ok';
+                       (abr.length  ? `  |  📂 Abertos: ${abr.join(', ')}` : '');
+    info.className = 'info-tag ok';
   } catch (e) {
-    if (e.name === 'TypeError' || e.message === 'Failed to fetch') {
-      info.textContent = 'ℹ️ Consulta indisponível externamente — verifique os encerramentos diretamente no sistema Betha.';
-      info.className = 'info-tag';
-    } else {
-      info.textContent = `Erro: ${e.message}`; info.className = 'info-tag err';
-    }
+    info.textContent = `Erro: ${e.message}`; info.className = 'info-tag err';
   }
 }
 
 /* ══════════════════════════════════════════════
-   EXECUÇÃO
+   EXECUÇÃO — via Flask SSE
 ══════════════════════════════════════════════ */
 async function iniciarExecucao() {
   const auth = document.getElementById('authorization').value.trim();
   const ua   = document.getElementById('userAccess').value.trim();
   const mes  = document.getElementById('mes').value;
   const ano  = document.getElementById('ano').value.trim();
-
-  if (!auth || !ua)           { alert('Preencha Authorization e User-Access.'); return; }
-  if (!ano.match(/^\d{4}$/))  { alert('Informe um ano válido (4 dígitos).'); return; }
+  if (!auth || !ua)          { alert('Preencha Authorization e User-Access.'); return; }
+  if (!ano.match(/^\d{4}$/)) { alert('Informe um ano válido (4 dígitos).'); return; }
 
   const competencia    = `${ano}-${mes}`;
-  const etapaInicial   = parseInt(document.getElementById('etapa-inicial').value)   || 1;
-  const assuntoInicial = parseInt(document.getElementById('assunto-inicial').value)  || 0;
+  const etapaInicial   = parseInt(document.getElementById('etapa-inicial').value)  || 1;
+  const assuntoInicial = parseInt(document.getElementById('assunto-inicial').value) || 0;
   const visibilidade   = document.getElementById('visibilidade').checked;
-  const enviarEmail    = false;
-  const emailsNotificar = [];
 
-  // Salvar credenciais
   localStorage.setItem(LS_HISTORY, JSON.stringify({ authorization: auth, userAccess: ua }));
 
   limparLog();
@@ -715,118 +382,121 @@ async function iniciarExecucao() {
   document.getElementById('btn-parar').disabled    = false;
   setStatus('Iniciando...', 'run');
 
-  appendLog(`${'='.repeat(60)}`);
-  appendLog(`  e-Sfinge Online 2026 - Automação Tributos`);
-  appendLog(`${'='.repeat(60)}`);
-  appendLog(`📅 Competência: ${competencia}`);
-  appendLog(`🕐 Início: ${new Date().toLocaleString('pt-BR')}`);
-  appendLog(`⚙️ Total de etapas: ${ETAPAS.length}`);
-  if (etapaInicial > 1) appendLog(`⏭️ Começando na etapa: ${String(etapaInicial).padStart(2,'0')}`);
-  if (assuntoInicial > 0 && etapaInicial === 1) appendLog(`⏭️ Começando no assunto: [${String(assuntoInicial).padStart(2,'0')}]`);
-  appendLog(`⚠️ Qualquer ERRO em qualquer etapa PARA a execução!`);
-
-  _executor = new EsfingeExecutor({
-    authorization: auth, userAccess: ua, competencia, etapaInicial, assuntoInicial,
-    visibilidadePublica: visibilidade, enviarEmail, emailsNotificar,
-    onLog:      msg  => appendLog(msg),
-    onStatus:   msg  => setStatus(msg, 'run'),
-    onProgress: (done, total, nome) => setProgress(done, total, nome),
-  });
-
-  const relatorio = await _executor.executar();
-
-  document.getElementById('btn-executar').disabled = false;
-  document.getElementById('btn-parar').disabled    = true;
-
-  if (relatorio.status === 'concluido_sucesso') {
-    setStatus('✅ Todas as etapas concluídas com sucesso!', 'ok');
-  } else if (relatorio.status === 'erro') {
-    setStatus(`🔴 PAROU na etapa ${String(relatorio.etapaErro).padStart(2,'0')} — ERRO`, 'erro');
-  } else {
-    setStatus('⚠️ Interrompido pelo usuário', '');
+  try {
+    const resp = await fetch('/api/executor/iniciar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ authorization: auth, userAccess: ua, competencia, etapaInicial, assuntoInicial, visibilidadePublica: visibilidade }),
+    });
+    const data = await resp.json();
+    if (data.erro) { alert('Erro ao iniciar: ' + data.erro); _resetBotoes(); return; }
+    _executionId = data.execution_id;
+  } catch (e) {
+    alert('Erro de conexão: ' + e.message); _resetBotoes(); return;
   }
 
-  mostrarRelatorio(relatorio);
+  // Abre SSE stream
+  _eventSource = new EventSource(`/api/executor/stream/${_executionId}`);
+  let etapasConcluidas = 0;
+  const totalEtapas = 9 - (etapaInicial - 1);
+
+  _eventSource.onmessage = e => {
+    const { type, msg } = JSON.parse(e.data);
+    if (type === 'log') {
+      appendLog(msg);
+      if (msg.includes('══ Etapa') && msg.includes('OK')) {
+        etapasConcluidas++;
+        setProgress(etapasConcluidas, totalEtapas, '');
+      }
+    }
+    if (type === 'status') setStatus(msg, 'run');
+    if (type === 'ping')   return;
+    if (type === 'error')  { appendLog('🔴 ' + msg); _finalizarExecucao('erro'); }
+    if (type === 'done')   { _finalizarExecucao(msg); }
+  };
+  _eventSource.onerror = () => {
+    appendLog('\n⚠️ Conexão SSE perdida.');
+    _finalizarExecucao('erro');
+  };
+}
+
+async function _finalizarExecucao(statusFinal) {
+  if (_eventSource) { _eventSource.close(); _eventSource = null; }
+  _resetBotoes();
+
+  if (statusFinal === 'concluido_sucesso') {
+    setStatus('✅ Todas as etapas concluídas com sucesso!', 'ok');
+    setProgress(9, 9, '');
+  } else if (statusFinal === 'interrompido') {
+    setStatus('⚠️ Interrompido pelo usuário', '');
+  } else {
+    setStatus('🔴 Execução encerrada com erro', 'erro');
+  }
+
+  // Buscar relatório
+  try {
+    const r = await fetch(`/api/executor/relatorio/${_executionId}`);
+    if (r.ok) mostrarRelatorio(await r.json());
+  } catch {}
 }
 
 function pararExecucao() {
-  if (_executor) {
-    _executor.stop();
+  if (_executionId) {
+    fetch(`/api/executor/parar/${_executionId}`, { method: 'POST' });
     appendLog('\n⚠️ Solicitando parada...');
     document.getElementById('btn-parar').disabled = true;
   }
+}
+
+function _resetBotoes() {
+  document.getElementById('btn-executar').disabled = false;
+  document.getElementById('btn-parar').disabled    = true;
 }
 
 /* ══════════════════════════════════════════════
    UI HELPERS
 ══════════════════════════════════════════════ */
 function appendLog(msg) {
-  const t = document.getElementById('terminal');
+  const t   = document.getElementById('terminal');
   const div = document.createElement('span');
-
-  if      (msg.includes('✅') || msg.includes('🎉')) div.className = 'log-ok';
+  if      (msg.includes('✅') || msg.includes('🎉'))                div.className = 'log-ok';
   else if (msg.includes('🔴') || msg.includes('ERRO') || msg.includes('CRÍTICO')) div.className = 'log-err';
-  else if (msg.includes('⚠️') || msg.includes('Interrompido'))  div.className = 'log-warn';
+  else if (msg.includes('⚠️') || msg.includes('Interrompido'))      div.className = 'log-warn';
   else if (msg.includes('🔄') || msg.includes('📋') || msg.includes('🚀')) div.className = 'log-info';
-  else if (msg.startsWith('=') || msg.startsWith(' '))           div.className = 'log-sep';
-  else if (msg.includes('⏳') || msg.includes('ℹ️'))              div.className = 'log-dim';
-
+  else if (msg.startsWith('=') || msg.startsWith(' '))              div.className = 'log-sep';
+  else if (msg.includes('⏳') || msg.includes('ℹ️'))                 div.className = 'log-dim';
   div.textContent = msg + '\n';
   t.appendChild(div);
   t.scrollTop = t.scrollHeight;
 }
 
-function limparLog() {
-  document.getElementById('terminal').innerHTML = '';
-}
-
-function setStatus(msg, cls) {
-  const el = document.getElementById('status-val');
-  el.textContent = msg;
-  el.className   = `status-val ${cls || ''}`;
-}
-
+function limparLog()         { document.getElementById('terminal').innerHTML = ''; }
+function setStatus(msg, cls) { const el = document.getElementById('status-val'); el.textContent = msg; el.className = `status-val ${cls||''}`; }
 function setProgress(done, total, nome) {
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  document.getElementById('progress-bar').style.width = pct + '%';
-  document.getElementById('progress-label').textContent =
-    total > 0 ? `Etapa ${done}/${total}${nome ? ' — ' + nome : ''}` : '';
+  document.getElementById('progress-bar').style.width = (total > 0 ? Math.round(done/total*100) : 0) + '%';
+  document.getElementById('progress-label').textContent = total > 0 ? `Etapa ${done}/${total}${nome?' — '+nome:''}` : '';
 }
 
 function mostrarRelatorio(rel) {
+  const etapaNames = ['','Gerar Dados','Tratamento','Vínculos Saldos','Revisões','Cobrança DA','Lançamentos','Imóveis','Contribuintes','CONs'];
   const sec = document.getElementById('relatorio-section');
-  const sta = document.getElementById('relatorio-status');
-  const bod = document.getElementById('relatorio-body');
+  let badge;
+  if (rel.status === 'concluido_sucesso') badge = '<span class="badge-status badge-ok">✅ Sucesso total</span>';
+  else if (rel.status === 'erro')         badge = `<span class="badge-status badge-erro">🔴 Erro — etapa ${rel.etapa_erro} ${etapaNames[rel.etapa_erro]||''}</span>`;
+  else                                    badge = '<span class="badge-status badge-inter">⚠️ Interrompido</span>';
+  document.getElementById('relatorio-status').innerHTML = badge;
 
-  let badge, lines = [];
-  if (rel.status === 'concluido_sucesso') {
-    badge = '<span class="badge-status badge-ok">✅ Sucesso total</span>';
-  } else if (rel.status === 'erro') {
-    const etapaNome = ETAPAS.find(e => e.numero === rel.etapaErro)?.nome || '';
-    badge = `<span class="badge-status badge-erro">🔴 Erro — etapa ${rel.etapaErro} ${etapaNome}</span>`;
-  } else {
-    badge = '<span class="badge-status badge-inter">⚠️ Interrompido</span>';
-  }
-
-  sta.innerHTML = badge;
-
-  lines.push(`Início : ${new Date(rel.inicio).toLocaleString('pt-BR')}`);
-  lines.push(`Fim    : ${new Date(rel.fim).toLocaleString('pt-BR')}`);
-  lines.push(`Status : ${rel.status}`);
-  lines.push('');
-  lines.push('ETAPAS EXECUTADAS COM SUCESSO:');
-  if (rel.etapasOk.length) {
-    rel.etapasOk.forEach(e => lines.push(`  ✅ Etapa ${String(e.numero).padStart(2,'0')} — ${e.nome}`));
-  } else {
-    lines.push('  (nenhuma)');
-  }
-  if (rel.detalheErro) {
-    lines.push('');
-    lines.push('DETALHE DO ERRO:');
-    lines.push(rel.detalheErro);
-  }
-
-  bod.textContent = lines.join('\n');
+  const lines = [
+    `Início : ${new Date(rel.inicio).toLocaleString('pt-BR')}`,
+    `Fim    : ${new Date(rel.fim).toLocaleString('pt-BR')}`,
+    `Status : ${rel.status}`, '',
+    'ETAPAS EXECUTADAS COM SUCESSO:',
+  ];
+  if (rel.etapas_executadas?.length) {
+    rel.etapas_executadas.forEach(e => lines.push(`  ✅ Etapa ${String(e.numero).padStart(2,'0')} — ${e.nome}`));
+  } else lines.push('  (nenhuma)');
+  if (rel.erro_detalhes) { lines.push('', 'DETALHE DO ERRO:', rel.erro_detalhes); }
+  document.getElementById('relatorio-body').textContent = lines.join('\n');
   sec.style.display = '';
   sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
