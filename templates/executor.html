@@ -141,15 +141,17 @@
     </div>
     <div class="field">
       <label>User-Access</label>
-      <input type="text" id="userAccess" placeholder="database_uuid" autocomplete="off">
+      <input type="text" id="userAccess" placeholder="Cole o User-Access aqui" autocomplete="off">
     </div>
   </div>
 
-  <!-- Card 2: Configuração -->
+  <!-- Card 2: Configuração da Execução -->
   <div class="card">
     <h2><span class="step-badge">2</span> Configuração da Execução</h2>
-    <div class="row-2">
-      <div class="field">
+
+    <!-- Competência -->
+    <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+      <div class="field" style="margin:0;width:160px">
         <label>Mês de competência</label>
         <select id="mes">
           <option value="01">01 — Janeiro</option><option value="02">02 — Fevereiro</option>
@@ -160,35 +162,35 @@
           <option value="11">11 — Novembro</option><option value="12">12 — Dezembro</option>
         </select>
       </div>
-      <div class="field">
-        <label>Ano de competência</label>
-        <div class="field-row">
-          <input type="text" id="ano" value="2026" maxlength="4" style="width:90px">
-          <button class="btn btn-ghost" onclick="consultarEncerramento()">📅 Encerramentos</button>
-        </div>
-        <div class="info-tag" id="encerramento-info"></div>
+      <div class="field" style="margin:0;width:100px">
+        <label>Ano</label>
+        <input type="text" id="ano" value="2026" maxlength="4">
       </div>
+      <button class="btn btn-ghost" onclick="consultarEncerramento()" style="margin-bottom:1px">📅 Consultar encerramentos</button>
     </div>
-    <div class="row-2">
-      <div class="field">
-        <label>Iniciar na etapa (opcional)</label>
-        <select id="etapa-inicial">
-          <option value="">— do início —</option>
-        </select>
-      </div>
-      <div class="field">
-        <label>Iniciar no assunto — etapa 01 (opcional)</label>
-        <select id="assunto-inicial">
-          <option value="">— do início —</option>
-        </select>
-      </div>
+    <div class="info-tag" id="encerramento-info" style="margin-bottom:12px"></div>
+
+    <!-- Etapa inicial -->
+    <div class="field">
+      <label>Iniciar na etapa (opcional)</label>
+      <select id="etapa-inicial">
+        <option value="">— do início (etapa 01) —</option>
+      </select>
     </div>
-    <label class="check-row"><input type="checkbox" id="visibilidade" checked> Visibilidade execução pública</label>
-    <label class="check-row"><input type="checkbox" id="enviar-email" onchange="toggleEmail()"> Enviar e-mail ao finalizar</label>
-    <div id="email-field" class="field" style="display:none;margin-top:4px">
-      <label>E-mails para notificar (separar por vírgula)</label>
-      <input type="text" id="emails" placeholder="usuario@email.com, outro@email.com">
+
+    <!-- Assunto inicial -->
+    <div class="field">
+      <label>Iniciar no assunto — somente se iniciar na etapa 01 (opcional)</label>
+      <select id="assunto-inicial">
+        <option value="">— do início —</option>
+      </select>
     </div>
+
+    <!-- Visibilidade -->
+    <label class="check-row" style="margin-top:6px">
+      <input type="checkbox" id="visibilidade" checked>
+      Visibilidade da execução pública
+    </label>
   </div>
 
   <!-- Card 3: Ação + Status -->
@@ -654,29 +656,30 @@ async function consultarEncerramento() {
   const ano  = document.getElementById('ano').value.trim();
   const info = document.getElementById('encerramento-info');
   if (!auth || !ua) { info.textContent = 'Preencha as credenciais primeiro.'; info.className = 'info-tag err'; return; }
+  if (!ano.match(/^\d{4}$/)) { info.textContent = 'Informe um ano válido.'; info.className = 'info-tag err'; return; }
   info.className = 'info-tag'; info.textContent = 'Consultando...';
   try {
+    // GET não deve ter Content-Type — pode causar CORS preflight desnecessário
     const resp = await fetch(`${ENCERRAMENTO_URL}/${ano}`, {
-      headers: { 'Content-Type': 'application/json', 'Authorization': `bearer ${auth}`, 'User-Access': ua }
+      headers: { 'Authorization': `bearer ${auth}`, 'User-Access': ua }
     });
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${(await resp.text()).substring(0,200)}`);
     const data = await resp.json();
-    const enc = (data.content || []).filter(i => i.encerrado?.valor === 'SIM').map(i => i.mes?.descricao);
-    const abr = (data.content || []).filter(i => i.encerrado?.valor !== 'SIM').map(i => i.mes?.descricao);
+    const items = data.content || data || [];
+    const MES_NOMES = { JANEIRO:'Jan', FEVEREIRO:'Fev', MARCO:'Mar', ABRIL:'Abr', MAIO:'Mai', JUNHO:'Jun', JULHO:'Jul', AGOSTO:'Ago', SETEMBRO:'Set', OUTUBRO:'Out', NOVEMBRO:'Nov', DEZEMBRO:'Dez' };
+    const enc = [], abr = [];
+    for (const item of items) {
+      const mesValor = item.mes?.valor || item.mes || '';
+      const mesDesc  = MES_NOMES[mesValor] || item.mes?.descricao || mesValor;
+      const encerrado = item.encerrado?.valor === 'SIM' || item.encerrado === true;
+      (encerrado ? enc : abr).push(mesDesc);
+    }
     info.textContent = (enc.length ? `🔒 Encerrados: ${enc.join(', ')}` : '✅ Nenhum mês encerrado') +
                        (abr.length ? `  |  📂 Abertos: ${abr.join(', ')}` : '');
     info.className   = 'info-tag ok';
   } catch (e) {
     info.textContent = `Erro: ${e.message}`; info.className = 'info-tag err';
   }
-}
-
-/* ══════════════════════════════════════════════
-   TOGGLE EMAIL
-══════════════════════════════════════════════ */
-function toggleEmail() {
-  document.getElementById('email-field').style.display =
-    document.getElementById('enviar-email').checked ? '' : 'none';
 }
 
 /* ══════════════════════════════════════════════
@@ -695,12 +698,8 @@ async function iniciarExecucao() {
   const etapaInicial   = parseInt(document.getElementById('etapa-inicial').value)   || 1;
   const assuntoInicial = parseInt(document.getElementById('assunto-inicial').value)  || 0;
   const visibilidade   = document.getElementById('visibilidade').checked;
-  const enviarEmail    = document.getElementById('enviar-email').checked;
-  let emailsNotificar  = [];
-  if (enviarEmail) {
-    emailsNotificar = document.getElementById('emails').value.split(',').map(e => e.trim()).filter(Boolean);
-    if (!emailsNotificar.length) { alert('Informe ao menos um e-mail.'); return; }
-  }
+  const enviarEmail    = false;
+  const emailsNotificar = [];
 
   // Salvar credenciais
   localStorage.setItem(LS_HISTORY, JSON.stringify({ authorization: auth, userAccess: ua }));
