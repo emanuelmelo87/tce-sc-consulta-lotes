@@ -29,6 +29,12 @@ def cadastro_erros_page():
     return render_template("cadastro-erros.html")
 
 
+@app.route("/agrupador-erros")
+@app.route("/agrupador-erros.html")
+def agrupador_erros_page():
+    return render_template("agrupador-erros.html")
+
+
 @app.route("/api/autenticar", methods=["POST"])
 def autenticar():
     body = request.json

@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agrupador de Erros — e-Sfinge TCE/SC</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:     #1a3a6b;
+      --blue-mid: #1e4a8a;
+      --orange:   #F47920;
+      --red:      #dc2626;
+      --yellow:   #d97706;
+      --green:    #16a34a;
+      --gray:     #6b7280;
+      --gray-bg:  #f0f2f5;
+      --card-bg:  #ffffff;
+      --border:   #e2e8f0;
+      --shadow:   0 2px 10px rgba(0,0,0,.07);
+    }
+
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--gray-bg); min-height: 100vh; color: #1a1a2e; }
+
+    /* ── Topbar ── */
+    .topbar { background: var(--blue); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+    .topbar a { color: rgba(255,255,255,.7); text-decoration: none; font-size: .82rem; }
+    .topbar a:hover { color: #fff; }
+    .topbar-sep { color: rgba(255,255,255,.3); margin: 0 4px; }
+    .topbar-icon { width: 34px; height: 34px; background: rgba(255,255,255,.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+    .topbar-title { font-weight: 700; font-size: .95rem; }
+    .topbar-sub   { font-size: .72rem; opacity: .7; }
+
+    /* ── Layout ── */
+    .main { max-width: 1280px; margin: 0 auto; padding: 24px 20px 56px; }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      background: #fff; border: 2.5px dashed #c8d4e8;
+      border-radius: 16px; padding: 64px 40px;
+      text-align: center; cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--blue); background: #f0f5ff; }
+    .drop-zone.dragover { border-style: solid; }
+    .drop-icon  { font-size: 3.2rem; margin-bottom: 14px; }
+    .drop-title { font-size: 1.2rem; font-weight: 700; color: var(--blue); margin-bottom: 8px; }
+    .drop-sub   { font-size: .85rem; color: var(--gray); margin-bottom: 22px; }
+    .btn-browse {
+      display: inline-block; background: var(--blue); color: #fff;
+      padding: 10px 24px; border-radius: 8px; font-size: .85rem;
+      font-weight: 700; cursor: pointer; transition: background .2s;
+    }
+    .btn-browse:hover { background: var(--blue-mid); }
+    .drop-hint { margin-top: 14px; font-size: .73rem; color: #aaa; }
+
+    /* ── File info bar ── */
+    .file-info-bar {
+      background: var(--blue); color: #fff; border-radius: 12px;
+      padding: 14px 20px; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    }
+    .fi-item .fi-label { font-size: .67rem; opacity: .65; text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: 2px; }
+    .fi-item .fi-val   { font-size: .85rem; font-weight: 700; }
+    .fi-sep  { width: 1px; height: 32px; background: rgba(255,255,255,.2); flex-shrink: 0; }
+    .btn-trocar {
+      margin-left: auto; background: rgba(255,255,255,.15);
+      border: 1px solid rgba(255,255,255,.25); color: #fff;
+      border-radius: 7px; padding: 6px 14px; font-size: .77rem;
+      cursor: pointer; transition: background .2s; white-space: nowrap;
+    }
+    .btn-trocar:hover { background: rgba(255,255,255,.28); }
+
+    /* ── Summary cards ── */
+    .summary-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px,1fr)); gap: 10px; margin-bottom: 14px; }
+    .stat-card {
+      background: #fff; border-radius: 10px; box-shadow: var(--shadow);
+      padding: 13px 16px; border-left: 4px solid var(--blue);
+    }
+    .stat-card.red    { border-left-color: var(--red); }
+    .stat-card.yellow { border-left-color: var(--yellow); }
+    .stat-card.green  { border-left-color: var(--green); }
+    .stat-card.orange { border-left-color: var(--orange); }
+    .stat-label { font-size: .67rem; color: var(--gray); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+    .stat-value { font-size: 1.55rem; font-weight: 800; line-height: 1; }
+    .stat-sub   { font-size: .68rem; color: var(--gray); margin-top: 3px; }
+
+    /* ── Controls bar ── */
+    .controls-bar {
+      background: #fff; border-radius: 12px; box-shadow: var(--shadow);
+      padding: 12px 16px; margin-bottom: 14px;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .controls-label { font-size: .72rem; font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: .05em; margin-right: 2px; white-space: nowrap; }
+    .mode-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+    .mode-btn {
+      padding: 6px 13px; border-radius: 7px;
+      border: 1.5px solid var(--border); background: #f8fafc;
+      color: #555; font-size: .78rem; font-weight: 600;
+      cursor: pointer; transition: .15s; white-space: nowrap;
+    }
+    .mode-btn:hover  { border-color: var(--blue); color: var(--blue); }
+    .mode-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .search-input {
+      margin-left: auto; padding: 7px 12px;
+      border: 1.5px solid var(--border); border-radius: 7px;
+      font-size: .82rem; width: 230px; background: #fafbfc;
+    }
+    .search-input:focus { outline: none; border-color: var(--blue); }
+
+    /* ── Grupo (accordion) ── */
+    .grupo {
+      background: #fff; border-radius: 12px;
+      box-shadow: var(--shadow); margin-bottom: 8px; overflow: hidden;
+    }
+    .grupo-header {
+      display: flex; align-items: center; gap: 9px;
+      padding: 12px 16px; cursor: pointer; user-select: none;
+      transition: background .15s;
+    }
+    .grupo-header:hover { background: #f8fafc; }
+    .grupo-arrow { font-size: .65rem; color: var(--gray); transition: transform .18s; flex-shrink: 0; }
+    .grupo.open .grupo-arrow { transform: rotate(90deg); }
+    .grupo-chave {
+      flex: 1; font-size: .84rem; font-weight: 600; color: #1a1a2e;
+      line-height: 1.45; overflow: hidden;
+    }
+    .grupo-chave code { font-family: 'Segoe UI', sans-serif; color: #6d28d9; background: #f3f0ff; border-radius: 3px; padding: 1px 5px; font-size: .78rem; }
+    .grupo-badges { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+    .tbadge {
+      font-size: .68rem; font-weight: 700; padding: 2px 8px;
+      border-radius: 99px; white-space: nowrap;
+    }
+    .tbadge-erro    { background: #fde8e8; color: var(--red); }
+    .tbadge-aviso   { background: #fef3c7; color: var(--yellow); }
+    .tbadge-misto   { background: #f3f0ff; color: #6d28d9; }
+    .tbadge-corrig  { background: #dcfce7; color: var(--green); }
+    .grupo-count {
+      font-size: .73rem; font-weight: 700; padding: 3px 10px;
+      border-radius: 99px; white-space: nowrap;
+      background: #e8f0fe; color: var(--blue);
+    }
+    .grupo-count.red    { background: #fde8e8; color: var(--red); }
+    .grupo-count.yellow { background: #fef3c7; color: var(--yellow); }
+    .btn-copiar {
+      background: none; border: 1px solid var(--border); border-radius: 6px;
+      padding: 3px 9px; font-size: .7rem; color: var(--gray);
+      cursor: pointer; transition: .15s; white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-copiar:hover    { border-color: var(--blue); color: var(--blue); }
+    .btn-copiar.copiado  { border-color: var(--green); color: var(--green); }
+
+    /* ── Records table ── */
+    .grupo-body { display: none; border-top: 1px solid var(--border); overflow-x: auto; }
+    .grupo.open .grupo-body { display: block; }
+    .rec-table { width: 100%; border-collapse: collapse; font-size: .79rem; }
+    .rec-table th {
+      background: #f4f6fb; color: var(--gray); font-size: .66rem;
+      text-transform: uppercase; letter-spacing: .05em;
+      padding: 7px 12px; text-align: left; font-weight: 700;
+      border-bottom: 1px solid var(--border);
+    }
+    .rec-table td { padding: 8px 12px; border-bottom: 1px solid #f0f2f5; vertical-align: top; }
+    .rec-table tr:last-child td { border-bottom: none; }
+    .rec-table tbody tr:hover td { background: #fafbfd; }
+    .rec-desc { color: #374151; line-height: 1.5; }
+    .rec-desc mark { background: #fef9c3; border-radius: 3px; padding: 0 2px; font-style: normal; color: #92400e; }
+    .rec-sol { color: var(--gray); font-size: .75rem; font-style: italic; margin-top: 3px; }
+    .rec-chip {
+      display: inline-block; font-size: .68rem; font-weight: 600;
+      padding: 1px 7px; border-radius: 99px; white-space: nowrap;
+    }
+
+    /* ── Empty ── */
+    .empty-msg { text-align: center; padding: 48px 20px; color: var(--gray); font-size: .9rem; }
+    .empty-icon { font-size: 2.2rem; margin-bottom: 10px; }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 400;
+      background: #15803d; color: #fff; padding: 10px 18px;
+      border-radius: 8px; font-size: .83rem; font-weight: 600;
+      box-shadow: 0 4px 14px rgba(0,0,0,.2);
+      animation: toastIn .2s;
+    }
+    @keyframes toastIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html">← Central</a>
+  <span class="topbar-sep">|</span>
+  <div class="topbar-icon">🗂️</div>
+  <div>
+    <div class="topbar-title">Agrupador de Erros</div>
+    <div class="topbar-sub">Pré-validações e-Sfinge / Betha</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- ── Drop zone ── -->
+  <div id="drop-zone" class="drop-zone">
+    <div class="drop-icon">📂</div>
+    <div class="drop-title">Solte aqui o arquivo HTML de validação</div>
+    <div class="drop-sub">Arquivo gerado pelo sistema Betha — pré-validações de lançamentos tributários, NFS-e, etc.</div>
+    <label class="btn-browse" for="file-input">Selecionar arquivo</label>
+    <input type="file" id="file-input" accept=".html,.htm" style="display:none">
+    <div class="drop-hint">Nenhum dado é enviado para servidores — tudo processado no navegador.</div>
+  </div>
+
+  <!-- ── Resultados ── -->
+  <div id="results" style="display:none">
+
+    <div id="file-info" class="file-info-bar"></div>
+
+    <div id="summary" class="summary-row"></div>
+
+    <div class="controls-bar">
+      <span class="controls-label">Agrupar por</span>
+      <div class="mode-btns" id="mode-btns">
+        <button class="mode-btn active" data-mode="mensagem">📋 Mensagem</button>
+        <button class="mode-btn" data-mode="contribuinte">👤 Contribuinte</button>
+        <button class="mode-btn" data-mode="tipo">🔴 Tipo</button>
+        <button class="mode-btn" data-mode="sistema">⚙️ Sistema</button>
+        <button class="mode-btn" data-mode="todos">📄 Todos (flat)</button>
+      </div>
+      <input type="text" id="search-input" class="search-input" placeholder="🔍 Filtrar registros...">
+    </div>
+
+    <div id="grupos-container"></div>
+
+  </div>
+</div>
+
+<script>
+  /* ══════════════════════════════════════════════
+     ESTADO
+  ══════════════════════════════════════════════ */
+  let _registros = [];
+  let _meta      = {};
+  let _modo      = 'mensagem';
+
+  /* ══════════════════════════════════════════════
+     FILE HANDLING
+  ══════════════════════════════════════════════ */
+  const dropZone  = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault(); dropZone.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if (f) carregarArquivo(f);
+  });
+  fileInput.addEventListener('change', () => { if (fileInput.files[0]) carregarArquivo(fileInput.files[0]); });
+
+  function carregarArquivo(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const parser = new DOMParser();
+        const doc    = parser.parseFromString(e.target.result, 'text/html');
+        extrairDados(doc, file.name);
+        if (!_registros.length) { alert('Nenhum registro de erro/aviso encontrado no arquivo.'); return; }
+        renderizarTudo();
+        dropZone.style.display  = 'none';
+        document.getElementById('results').style.display = '';
+      } catch (err) {
+        alert('Erro ao processar o arquivo: ' + err.message);
+        console.error(err);
+      }
+    };
+    reader.readAsText(file, 'utf-8');
+  }
+
+  /* ══════════════════════════════════════════════
+     EXTRAÇÃO DOS DADOS DO HTML
+  ══════════════════════════════════════════════ */
+  function extrairDados(doc, nomeArquivo) {
+    const params  = doc.querySelector('.parametrosBanco')?.textContent || '';
+    const datGer  = doc.querySelector('.dataGeracao')?.textContent?.trim() || '';
+    const entidade = (params.match(/Entidade_(.+?)validar/i)?.[1] || doc.querySelector('.ng-binding')?.textContent || '').trim();
+    const ano     = params.match(/Ano_([\d-]+)/)?.[1] || '';
+    const assunto = params.match(/assunto_(\w+)/)?.[1] || '';
+    _meta = { entidade, ano, assunto, dataGeracao: datGer, nomeArquivo };
+
+    _registros = [];
+    const rows = doc.querySelectorAll('tr.table-danger, tr.table-warning, tr.table-success');
+    rows.forEach(tr => {
+      const tds = tr.querySelectorAll('td');
+      if (tds.length < 4) return;
+      const sistema  = tds[1]?.textContent?.trim() || '—';
+      const tipo     = tds[2]?.textContent?.trim() || '—';
+      const descricao= tds[3]?.textContent?.trim() || '';
+      const solucao  = tds[4]?.querySelector('[data-content]')?.getAttribute('data-content') || '';
+      const status   = tr.classList.contains('table-danger')  ? 'Erro'
+                     : tr.classList.contains('table-warning') ? 'Aviso'
+                     : 'Corrigido';
+      if (!descricao) return;
+      _registros.push({
+        id:           tr.id,
+        status, tipo, sistema, descricao, solucao,
+        descNorm:     normMsg(descricao),
+        contribuinte: extrairPadrao(descricao, /contribuinte\s+(\d+)/i),
+        lancamento:   extrairPadrao(descricao, /lançamento\s+(\d+)/i) || extrairPadrao(descricao, /lancamento\s+(\d+)/i),
+        credito:      extrairPadrao(descricao, /tipo de credito\s+(\d+)/i),
+        inscricao:    extrairPadrao(descricao, /inscrição\s+(\d+)/i),
+      });
+    });
+  }
+
+  function normMsg(msg) {
+    return msg
+      .replace(/\b\d[\d.,/-]*\b/g, '#')
+      .replace(/(#[\s,]*)+#+/g, '#')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function extrairPadrao(str, rx) {
+    return str.match(rx)?.[1] ?? null;
+  }
+
+  /* ══════════════════════════════════════════════
+     AGRUPAMENTO
+  ══════════════════════════════════════════════ */
+  function agrupar(regs, modo) {
+    const mapa = new Map();
+    regs.forEach(r => {
+      let chave;
+      switch (modo) {
+        case 'mensagem':    chave = r.descNorm; break;
+        case 'contribuinte':chave = r.contribuinte ? `Contribuinte ${r.contribuinte}` : '— sem contribuinte identificado'; break;
+        case 'tipo':        chave = r.status; break;
+        case 'sistema':     chave = r.sistema; break;
+        default:            chave = 'Todos os registros'; break;
+      }
+      if (!mapa.has(chave)) mapa.set(chave, []);
+      mapa.get(chave).push(r);
+    });
+    return [...mapa.entries()]
+      .sort((a, b) => b[1].length - a[1].length)
+      .map(([chave, regs]) => ({ chave, regs }));
+  }
+
+  function tipoGrupo(regs) {
+    const e = regs.some(r => r.status === 'Erro');
+    const a = regs.some(r => r.status === 'Aviso');
+    const c = regs.every(r => r.status === 'Corrigido');
+    if (e && a) return 'misto';
+    if (e) return 'erro';
+    if (a) return 'aviso';
+    return 'corrigido';
+  }
+
+  /* ══════════════════════════════════════════════
+     RENDER
+  ══════════════════════════════════════════════ */
+  function renderizarTudo() {
+    renderFileInfo();
+    renderSummary();
+    renderGrupos();
+    // Eventos de modo
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        _modo = btn.dataset.mode;
+        renderGrupos();
+      });
+    });
+    document.getElementById('search-input').addEventListener('input', renderGrupos);
+  }
+
+  function renderFileInfo() {
+    const m = _meta;
+    const assunto = (m.assunto || '')
+      .replace(/([A-Z])/g, ' $1').trim()
+      .replace(/^./, s => s.toUpperCase());
+    document.getElementById('file-info').innerHTML = `
+      <div class="fi-item"><span class="fi-label">Entidade</span><span class="fi-val">${escHtml(m.entidade || '—')}</span></div>
+      ${m.ano ? `<div class="fi-sep"></div><div class="fi-item"><span class="fi-label">Competência</span><span class="fi-val">${escHtml(m.ano)}</span></div>` : ''}
+      ${assunto ? `<div class="fi-sep"></div><div class="fi-item"><span class="fi-label">Assunto</span><span class="fi-val">${escHtml(assunto)}</span></div>` : ''}
+      ${m.dataGeracao ? `<div class="fi-sep"></div><div class="fi-item"><span class="fi-label">Gerado em</span><span class="fi-val">${escHtml(m.dataGeracao)}</span></div>` : ''}
+      <div class="fi-sep"></div>
+      <div class="fi-item"><span class="fi-label">Arquivo</span><span class="fi-val" style="font-size:.75rem;opacity:.85">${escHtml(m.nomeArquivo)}</span></div>
+      <button class="btn-trocar" onclick="trocarArquivo()">↩ Trocar arquivo</button>
+    `;
+  }
+
+  function renderSummary() {
+    const regs   = _registros;
+    const erros  = regs.filter(r => r.status === 'Erro').length;
+    const avisos = regs.filter(r => r.status === 'Aviso').length;
+    const corrig = regs.filter(r => r.status === 'Corrigido').length;
+    const padroes     = new Set(regs.map(r => r.descNorm)).size;
+    const contribuints = new Set(regs.map(r => r.contribuinte).filter(Boolean)).size;
+    document.getElementById('summary').innerHTML = `
+      <div class="stat-card">
+        <div class="stat-label">Total</div>
+        <div class="stat-value">${regs.length}</div>
+        <div class="stat-sub">registros</div>
+      </div>
+      <div class="stat-card red">
+        <div class="stat-label">Erros</div>
+        <div class="stat-value">${erros}</div>
+        <div class="stat-sub">bloqueantes</div>
+      </div>
+      <div class="stat-card yellow">
+        <div class="stat-label">Avisos</div>
+        <div class="stat-value">${avisos}</div>
+        <div class="stat-sub">não bloqueantes</div>
+      </div>
+      ${corrig ? `<div class="stat-card green"><div class="stat-label">Corrigidos</div><div class="stat-value">${corrig}</div><div class="stat-sub">marcados</div></div>` : ''}
+      <div class="stat-card orange">
+        <div class="stat-label">Padrões únicos</div>
+        <div class="stat-value">${padroes}</div>
+        <div class="stat-sub">msgs distintas</div>
+      </div>
+      ${contribuints ? `<div class="stat-card"><div class="stat-label">Contribuintes</div><div class="stat-value">${contribuints}</div><div class="stat-sub">afetados</div></div>` : ''}
+    `;
+  }
+
+  function renderGrupos() {
+    const filtro = document.getElementById('search-input').value.toLowerCase().trim();
+    let regs = _registros;
+    if (filtro) {
+      regs = regs.filter(r =>
+        r.descricao.toLowerCase().includes(filtro) ||
+        r.sistema.toLowerCase().includes(filtro) ||
+        (r.contribuinte || '').includes(filtro) ||
+        (r.lancamento   || '').includes(filtro)
+      );
+    }
+
+    const grupos = agrupar(regs, _modo);
+    const cont   = document.getElementById('grupos-container');
+
+    if (!grupos.length) {
+      cont.innerHTML = `<div class="empty-msg"><div class="empty-icon">🔍</div>Nenhum registro encontrado${filtro ? ' para "' + escHtml(filtro) + '"' : ''}.</div>`;
+      return;
+    }
+
+    cont.innerHTML = grupos.map((g, idx) => {
+      const tipo = tipoGrupo(g.regs);
+      const cntCls   = tipo === 'erro' ? 'red' : tipo === 'aviso' ? 'yellow' : '';
+      const tipoBadge = tipo === 'erro'
+        ? `<span class="tbadge tbadge-erro">Erro</span>`
+        : tipo === 'aviso'
+        ? `<span class="tbadge tbadge-aviso">Aviso</span>`
+        : tipo === 'misto'
+        ? `<span class="tbadge tbadge-misto">Erro + Aviso</span>`
+        : `<span class="tbadge tbadge-corrig">Corrigido</span>`;
+
+      const ne = g.regs.filter(r => r.status === 'Erro').length;
+      const na = g.regs.filter(r => r.status === 'Aviso').length;
+      const countLabel = (ne && na) ? `${ne} erro${ne>1?'s':''} · ${na} aviso${na>1?'s':''}` : `${g.regs.length} registro${g.regs.length>1?'s':''}`;
+
+      // Valores copiáveis: contribuintes ou lançamentos
+      const copiavel = [...new Set(g.regs.map(r => r.contribuinte || r.lancamento).filter(Boolean))];
+      const btnCopy  = copiavel.length
+        ? `<button class="btn-copiar" data-vals="${escHtml(copiavel.join(', '))}" onclick="copiarGrupo(this,event)">⎘ ${copiavel.length > 1 ? copiavel.length + ' códigos' : 'código'}</button>`
+        : '';
+
+      // Cabeçalho: normaliza o texto substituindo # por <code>#</code> para destaque visual
+      const chaveHtml = escHtml(g.chave).replace(/#/g, '<code>#</code>');
+
+      // Linhas da tabela
+      const linhas = g.regs.map(r => {
+        const desc = destacarNums(r.descricao);
+        const badgeTipo = r.status === 'Erro'
+          ? `<span class="rec-chip tbadge-erro">Erro</span>`
+          : r.status === 'Aviso'
+          ? `<span class="rec-chip tbadge-aviso">Aviso</span>`
+          : `<span class="rec-chip tbadge-corrig">Corrigido</span>`;
+        const contribuinteCell = r.contribuinte ? r.contribuinte : '<span style="color:#ccc">—</span>';
+        const lancamentoCell   = r.lancamento   ? r.lancamento   : '<span style="color:#ccc">—</span>';
+        return `<tr>
+          <td style="white-space:nowrap">${badgeTipo}</td>
+          <td class="rec-desc">${desc}${r.solucao ? `<div class="rec-sol">💡 ${escHtml(r.solucao)}</div>` : ''}</td>
+          <td style="font-size:.76rem;color:var(--gray);white-space:nowrap">${contribuinteCell}</td>
+          <td style="font-size:.76rem;color:var(--gray);white-space:nowrap">${lancamentoCell}</td>
+          <td style="font-size:.73rem;color:#aaa;white-space:nowrap">${escHtml(r.sistema)}</td>
+        </tr>`;
+      }).join('');
+
+      return `<div class="grupo" id="grupo-${idx}">
+        <div class="grupo-header" onclick="toggleGrupo('grupo-${idx}',event)">
+          <span class="grupo-arrow">▶</span>
+          <span class="grupo-chave">${chaveHtml}</span>
+          <div class="grupo-badges">
+            ${tipoBadge}
+            <span class="grupo-count ${cntCls}">${countLabel}</span>
+            ${btnCopy}
+          </div>
+        </div>
+        <div class="grupo-body">
+          <table class="rec-table">
+            <thead><tr>
+              <th style="width:72px">Tipo</th>
+              <th>Descrição</th>
+              <th style="width:100px">Contribuinte</th>
+              <th style="width:110px">Lançamento</th>
+              <th style="width:90px">Sistema</th>
+            </tr></thead>
+            <tbody>${linhas}</tbody>
+          </table>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  /* ══════════════════════════════════════════════
+     AÇÕES
+  ══════════════════════════════════════════════ */
+  function toggleGrupo(id, e) {
+    if (e.target.closest('.btn-copiar')) return;
+    document.getElementById(id).classList.toggle('open');
+  }
+
+  function copiarGrupo(btn, e) {
+    e.stopPropagation();
+    navigator.clipboard.writeText(btn.dataset.vals).then(() => {
+      const orig = btn.textContent;
+      btn.classList.add('copiado');
+      btn.textContent = '✓ Copiado';
+      setTimeout(() => { btn.classList.remove('copiado'); btn.textContent = orig; }, 1800);
+    });
+  }
+
+  function trocarArquivo() {
+    _registros = []; _meta = {};
+    document.getElementById('results').style.display  = 'none';
+    document.getElementById('drop-zone').style.display = '';
+    fileInput.value = '';
+    document.getElementById('search-input').value = '';
+  }
+
+  /* ══════════════════════════════════════════════
+     UTILS
+  ══════════════════════════════════════════════ */
+  function escHtml(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function destacarNums(msg) {
+    // Destaca números com <mark> para facilitar leitura
+    return escHtml(msg).replace(/\b(\d[\d.,/-]*)\b/g, '<mark>$1</mark>');
+  }
+</script>
+</body>
+</html>
