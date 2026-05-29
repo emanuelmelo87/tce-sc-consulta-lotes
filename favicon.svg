@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#1a3a6b"/>
+      <stop offset="100%" stop-color="#F47920"/>
+    </linearGradient>
+    <linearGradient id="stripe" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#F47920" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#F47920" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Fundo arredondado com gradiente TCE-azul → Betha-laranja -->
+  <rect width="64" height="64" rx="14" fill="url(#bg)"/>
+
+  <!-- Faixa diagonal sutil de textura Betha -->
+  <rect width="64" height="64" rx="14" fill="url(#stripe)"/>
+
+  <!-- Lupa — círculo -->
+  <circle cx="27" cy="27" r="12" fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- Lupa — cabo -->
+  <line x1="35.5" y1="35.5" x2="50" y2="50" stroke="#F47920" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Detalhe interior da lupa (linhas simulando dados) -->
+  <line x1="22" y1="27" x2="32" y2="27" stroke="rgba(255,255,255,0.5)" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="22" y1="22" x2="29" y2="22" stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-linecap="round"/>
+  <line x1="22" y1="32" x2="28" y2="32" stroke="rgba(255,255,255,0.35)" stroke-width="2" stroke-linecap="round"/>
+</svg>
