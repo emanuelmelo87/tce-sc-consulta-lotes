@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Executor e-Sfinge — TCE/SC</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <!-- JSZip: análise de ZIPs de validação no browser -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue:    #1a3a6b; --blue-mid: #1e4a8a;
+      --orange:  #F47920; --red: #dc2626; --yellow: #d97706; --green: #16a34a;
+      --gray:    #6b7280; --gray-bg: #f0f2f5; --border: #e2e8f0;
+      --shadow:  0 2px 10px rgba(0,0,0,.07);
+    }
+
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--gray-bg); color: #1a1a2e; }
+
+    /* ── Topbar ── */
+    .topbar { background: var(--blue); color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 12px; }
+    .topbar a { color: rgba(255,255,255,.7); text-decoration: none; font-size: .82rem; }
+    .topbar a:hover { color: #fff; }
+    .topbar-sep { color: rgba(255,255,255,.3); margin: 0 4px; }
+    .topbar-icon { width: 34px; height: 34px; background: rgba(255,255,255,.15); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+    .topbar-title { font-weight: 700; font-size: .95rem; }
+    .topbar-sub   { font-size: .72rem; opacity: .7; }
+
+    /* ── Layout ── */
+    .main { max-width: 960px; margin: 0 auto; padding: 20px 20px 56px; display: flex; flex-direction: column; gap: 14px; }
+
+    /* ── Card ── */
+    .card { background: #fff; border-radius: 12px; box-shadow: var(--shadow); padding: 20px 22px; }
+    .card h2 { font-size: .88rem; font-weight: 700; color: var(--blue); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid #eef0f4; display: flex; align-items: center; gap: 6px; }
+    .step-badge { background: var(--blue); color: #fff; border-radius: 50%; width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; font-size: .68rem; font-weight: 700; flex-shrink: 0; }
+
+    /* ── Form ── */
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field { margin-bottom: 10px; }
+    .field:last-child { margin-bottom: 0; }
+    label { display: block; font-size: .7rem; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 4px; }
+    input, select { width: 100%; padding: 8px 11px; border: 1.5px solid var(--border); border-radius: 7px; font-size: .88rem; color: #1a1a2e; background: #fafbfc; transition: border-color .2s; }
+    input:focus, select:focus { outline: none; border-color: var(--blue); background: #fff; }
+    .field-row { display: flex; gap: 8px; align-items: flex-end; }
+    .field-row input { flex: 1; }
+    .info-tag { font-size: .75rem; color: var(--gray); font-style: italic; margin-top: 4px; min-height: 1.2em; }
+    .info-tag.ok  { color: var(--green); font-style: normal; font-weight: 600; }
+    .info-tag.err { color: var(--red);   font-style: normal; }
+
+    /* ── Buttons ── */
+    .btn { padding: 9px 20px; border: none; border-radius: 8px; font-size: .85rem; font-weight: 700; cursor: pointer; transition: .15s; display: inline-flex; align-items: center; gap: 6px; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary { background: var(--blue); color: #fff; }
+    .btn-primary:not(:disabled):hover { background: var(--blue-mid); }
+    .btn-danger  { background: #fde8e8; color: var(--red); }
+    .btn-danger:not(:disabled):hover  { background: #fbd5d5; }
+    .btn-ghost   { background: #f1f5f9; color: #374151; }
+    .btn-ghost:not(:disabled):hover   { background: #e2e8f0; }
+
+    /* ── Status bar ── */
+    .status-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .status-label { font-size: .75rem; font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: .04em; }
+    .status-val { font-size: .9rem; font-weight: 700; flex: 1; }
+    .status-val.ok   { color: var(--green); }
+    .status-val.erro { color: var(--red); }
+    .status-val.run  { color: var(--blue); }
+
+    /* ── Progress bar ── */
+    .progress-wrap { background: #e9ecef; border-radius: 99px; height: 6px; overflow: hidden; margin-top: 8px; }
+    .progress-bar  { height: 100%; background: var(--blue); border-radius: 99px; transition: width .5s; width: 0%; }
+
+    /* ── Terminal log ── */
+    .terminal {
+      background: #0d1117; color: #c9d1d9;
+      border-radius: 10px; padding: 16px;
+      font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+      font-size: .78rem; line-height: 1.65;
+      height: 380px; overflow-y: auto;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .terminal .log-ok    { color: #3fb950; }
+    .terminal .log-err   { color: #f85149; }
+    .terminal .log-warn  { color: #d29922; }
+    .terminal .log-info  { color: #58a6ff; }
+    .terminal .log-dim   { color: #6e7681; }
+    .terminal .log-sep   { color: #484f58; }
+
+    /* ── Relatório ── */
+    #relatorio-section { display: none; }
+    .relatorio-box { background: #f8fafc; border-radius: 8px; padding: 16px; font-size: .82rem; line-height: 1.7; border: 1px solid var(--border); white-space: pre-wrap; font-family: monospace; }
+    .badge-status { display: inline-block; padding: 4px 14px; border-radius: 99px; font-size: .82rem; font-weight: 700; }
+    .badge-ok    { background: #dcfce7; color: var(--green); }
+    .badge-erro  { background: #fde8e8; color: var(--red); }
+    .badge-inter { background: #fef3c7; color: var(--yellow); }
+
+    /* ── CORS banner ── */
+    .cors-banner { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 10px; padding: 14px 18px; font-size: .82rem; color: #92400e; }
+    .cors-banner code { background: #1a1a2e; color: #a8d8a8; padding: 8px 12px; border-radius: 6px; display: block; margin: 8px 0; font-size: .75rem; white-space: pre-wrap; }
+
+    /* ── Checkbox row ── */
+    .check-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; font-size: .83rem; cursor: pointer; }
+    .check-row input[type=checkbox] { width: auto; margin: 0; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html">← Central</a>
+  <span class="topbar-sep">|</span>
+  <div class="topbar-icon">⚙️</div>
+  <div>
+    <div class="topbar-title">Executor e-Sfinge Tributos</div>
+    <div class="topbar-sub">Automação das 9 etapas de geração e validação</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- CORS warning (hidden after first successful call) -->
+  <div id="cors-banner" class="cors-banner" style="display:none">
+    <strong>⚠️ Verificar compatibilidade antes do primeiro uso</strong><br>
+    Cole o snippet abaixo no console do browser (F12) com suas credenciais reais para confirmar que as APIs Betha aceitam chamadas diretas:
+    <code>fetch('https://plataforma-licencas.betha.cloud/licenses/v0.1/api/entidades/atual/', {
+  headers: { 'Authorization': 'bearer SEU_TOKEN', 'User-Access': 'SEU_USER_ACCESS' }
+}).then(r => console.log('✅ STATUS:', r.status)).catch(e => console.error('❌ CORS:', e))</code>
+    Se retornar <strong>❌ CORS error</strong>, entre em contato para configurar um servidor proxy.
+  </div>
+
+  <!-- Card 1: Credenciais -->
+  <div class="card">
+    <h2><span class="step-badge">1</span> Credenciais</h2>
+    <div class="field">
+      <label>Authorization (token — sem a palavra "bearer")</label>
+      <div class="field-row">
+        <input type="password" id="authorization" placeholder="eyJhbGciOi..." autocomplete="off">
+        <button class="btn btn-ghost" onclick="consultarEntidade()">🔍 Consultar entidade</button>
+      </div>
+      <div class="info-tag" id="entidade-info"></div>
+    </div>
+    <div class="field">
+      <label>User-Access</label>
+      <input type="text" id="userAccess" placeholder="database_uuid" autocomplete="off">
+    </div>
+  </div>
+
+  <!-- Card 2: Configuração -->
+  <div class="card">
+    <h2><span class="step-badge">2</span> Configuração da Execução</h2>
+    <div class="row-2">
+      <div class="field">
+        <label>Mês de competência</label>
+        <select id="mes">
+          <option value="01">01 — Janeiro</option><option value="02">02 — Fevereiro</option>
+          <option value="03" selected>03 — Março</option><option value="04">04 — Abril</option>
+          <option value="05">05 — Maio</option><option value="06">06 — Junho</option>
+          <option value="07">07 — Julho</option><option value="08">08 — Agosto</option>
+          <option value="09">09 — Setembro</option><option value="10">10 — Outubro</option>
+          <option value="11">11 — Novembro</option><option value="12">12 — Dezembro</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Ano de competência</label>
+        <div class="field-row">
+          <input type="text" id="ano" value="2026" maxlength="4" style="width:90px">
+          <button class="btn btn-ghost" onclick="consultarEncerramento()">📅 Encerramentos</button>
+        </div>
+        <div class="info-tag" id="encerramento-info"></div>
+      </div>
+    </div>
+    <div class="row-2">
+      <div class="field">
+        <label>Iniciar na etapa (opcional)</label>
+        <select id="etapa-inicial">
+          <option value="">— do início —</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Iniciar no assunto — etapa 01 (opcional)</label>
+        <select id="assunto-inicial">
+          <option value="">— do início —</option>
+        </select>
+      </div>
+    </div>
+    <label class="check-row"><input type="checkbox" id="visibilidade" checked> Visibilidade execução pública</label>
+    <label class="check-row"><input type="checkbox" id="enviar-email" onchange="toggleEmail()"> Enviar e-mail ao finalizar</label>
+    <div id="email-field" class="field" style="display:none;margin-top:4px">
+      <label>E-mails para notificar (separar por vírgula)</label>
+      <input type="text" id="emails" placeholder="usuario@email.com, outro@email.com">
+    </div>
+  </div>
+
+  <!-- Card 3: Ação + Status -->
+  <div class="card">
+    <div class="status-row">
+      <button class="btn btn-primary" id="btn-executar" onclick="iniciarExecucao()">▶ Executar</button>
+      <button class="btn btn-danger"  id="btn-parar"    onclick="pararExecucao()" disabled>⏹ Parar</button>
+      <span class="status-label">Status:</span>
+      <span class="status-val" id="status-val">Aguardando configuração...</span>
+    </div>
+    <div class="progress-wrap" style="margin-top:12px">
+      <div class="progress-bar" id="progress-bar"></div>
+    </div>
+    <div style="font-size:.7rem;color:var(--gray);margin-top:4px" id="progress-label"></div>
+  </div>
+
+  <!-- Card 4: Terminal de log -->
+  <div class="card" style="padding:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <h2 style="margin:0;border:none;padding:0">📋 Log de execução</h2>
+      <button class="btn btn-ghost" style="font-size:.75rem;padding:5px 10px" onclick="limparLog()">🗑 Limpar</button>
+    </div>
+    <div class="terminal" id="terminal"></div>
+  </div>
+
+  <!-- Card 5: Relatório (aparece após conclusão) -->
+  <div class="card" id="relatorio-section">
+    <h2>📄 Relatório final</h2>
+    <div id="relatorio-status" style="margin-bottom:12px"></div>
+    <div class="relatorio-box" id="relatorio-body"></div>
+  </div>
+
+</div>
+
+<script>
+/* ══════════════════════════════════════════════
+   CONSTANTES — portadas de executar_esfinge.py
+══════════════════════════════════════════════ */
+const BASE_URL         = 'https://tributos.suite.betha.cloud/extensoes/scripts';
+const STATUS_URL       = 'https://plataforma-execucoes-v2.betha.cloud/api/consulta';
+const DOWNLOAD_URL     = 'https://plataforma-execucoes.betha.cloud/v1/download/api/execucoes';
+const LICENSES_URL     = 'https://plataforma-licencas.betha.cloud/licenses/v0.1/api';
+const ENCERRAMENTO_URL = 'https://tributos.suite.betha.cloud/dados/v1/encerramento-mensal';
+const POLLING_MS       = 20_000;
+const MAX_RETRIES      = 5;
+
+const ASSUNTOS_ETAPA_01 = [
+  ['saldosIniciaisCreditoTributario',              '[00] Saldo Inicial de Créditos Tributários'],
+  ['cadastrosContribuintes',                        '[01] Cadastro Contribuinte'],
+  ['cadastrosImobiliarios',                         '[02] Cadastro Imobiliário'],
+  ['cadastrosPropriedadesImobiliarias',             '[03] Cadastro de Propriedade Imobiliária'],
+  ['lancamentosCreditosTributarios',                '[04] Lançamento de Créditos Tributários'],
+  ['cobrancaDividaAtiva',                           '[05] Cobrança de Dívida Ativa'],
+  ['inicioPrazoPrescricional',                      '[06] Início do Prazo Prescricional'],
+  ['certidaoDividaAtiva',                           '[07] Certidão de Dívida Ativa'],
+  ['situacaoTipoCobrancaDividaAtiva',               '[08] Situação do Tipo de Cobrança de Dívida Ativa'],
+  ['revisaoValorLancamentosCreditosTributarios',    '[09] Revisão de Valor de Lançamentos'],
+  ['baixasCreditosTributarios',                     '[10] Baixa dos Créditos Tributários'],
+  ['diarioGeralArrecadacao',                        '[11] Diário Geral de Arrecadação'],
+  ['estornoReceitasDiarioGeralArrecadacao',         '[12] Estorno/Restituição de Receita'],
+];
+
+const ETAPAS = [
+  { numero:1, nome:'Gerar Dados (Todos os Assuntos)',                    id:'d0463029-0757-4972-b8a3-9648d01a3a00', multi:true,  geraZip:null  },
+  { numero:2, nome:'Tratamento de Dados - Lançamentos Não Encontrados',  id:'80245d85-b749-4ea1-b1df-88ee07493b3e', multi:false, geraZip:null, ignoraErrosSeSucesso:true },
+  { numero:3, nome:'Validação de Vínculos Saldos Iniciais',              id:'bf75ff5e-4035-4adb-ad08-c7363811d3ff', multi:false, geraZip:false },
+  { numero:4, nome:'Validação de Revisões',                              id:'1b375a6e-000a-41a4-95b1-6e961a237c75', multi:false, geraZip:false },
+  { numero:5, nome:'Validação de Cobrança Dívida Ativa',                 id:'02d1a518-a662-490e-aa96-a4de13169e57', multi:false, geraZip:null  },
+  { numero:6, nome:'Validação de Lançamentos',                           id:'89c1ef52-6989-4020-a3f8-65e5fcbb1980', multi:false, geraZip:null  },
+  { numero:7, nome:'Validação de Imóveis',                               id:'6bf03f6d-3734-4e9a-b984-6aed245733ff', multi:false, geraZip:null  },
+  { numero:8, nome:'Validação de Contribuintes',                         id:'173efc4a-59b2-4c5e-afd6-1f2f5825172f', multi:false, geraZip:null  },
+  { numero:9, nome:'Validação de CONs',                                  id:'b0dac6a0-0ea0-48c7-936e-f06e88360687', multi:false, geraZip:null  },
+];
+
+const LS_HISTORY = 'esfinge-executor-cred-v1';
+
+/* ══════════════════════════════════════════════
+   CLASSE EXECUTOR (JavaScript)
+══════════════════════════════════════════════ */
+class EsfingeExecutor {
+  constructor({ authorization, userAccess, competencia, etapaInicial = 1, assuntoInicial = 0,
+                visibilidadePublica = true, enviarEmail = false, emailsNotificar = [],
+                onLog, onStatus, onProgress }) {
+    this.authorization    = authorization;
+    this.userAccess       = userAccess;
+    this.competencia      = competencia;
+    this.etapaInicial     = etapaInicial;
+    this.assuntoInicial   = assuntoInicial;
+    this.visibilidade     = visibilidadePublica;
+    this.enviarEmail      = enviarEmail;
+    this.emailsNotificar  = emailsNotificar;
+    this.onLog            = onLog    || (() => {});
+    this.onStatus         = onStatus || (() => {});
+    this.onProgress       = onProgress || (() => {});
+    this._stop            = false;
+    this.relatorio        = { inicio: new Date().toISOString(), etapasOk: [], etapaErro: null, detalheErro: null, status: 'em_execucao' };
+  }
+
+  stop() { this._stop = true; }
+
+  _headers() {
+    return {
+      'Content-Type':  'application/json',
+      'User-Access':   this.userAccess,
+      'Authorization': `bearer ${this.authorization}`,
+    };
+  }
+
+  async _post(identificador, payload) {
+    const url = `${BASE_URL}/${identificador}/executar/?visibilidadeExecucaoPublica=${this.visibilidade}`;
+    const body = {
+      ...payload,
+      visibilidadeExecucaoPublica: this.visibilidade,
+      enviarEmailFinalizar:        this.enviarEmail,
+      emailsParaNotificar:         this.enviarEmail ? this.emailsNotificar : [],
+    };
+    let ultimoErro;
+    for (let t = 1; t <= MAX_RETRIES; t++) {
+      try {
+        const resp = await fetch(url, { method: 'POST', headers: this._headers(), body: JSON.stringify(body) });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${(await resp.text()).substring(0, 300)}`);
+        const data = await resp.json();
+        const protocolo = data.codigoExecucao;
+        if (!protocolo) throw new Error(`Sem codigoExecucao: ${JSON.stringify(data).substring(0, 300)}`);
+        return protocolo;
+      } catch (e) {
+        ultimoErro = e;
+        if (t < MAX_RETRIES) {
+          this.onLog(`  ⚠️ Erro de rede (tentativa ${t}/${MAX_RETRIES}): ${e.message}`);
+          await sleep(10_000);
+        }
+      }
+    }
+    throw new Error(`Falha após ${MAX_RETRIES} tentativas: ${ultimoErro?.message}`);
+  }
+
+  async _consultarStatus(protocolo) {
+    try {
+      const resp = await fetch(`${STATUS_URL}/${protocolo}`, { headers: this._headers() });
+      if (resp.status === 404) return ['processando', false];
+      if (resp.status >= 500) { this.onLog(`  ⚠️ Servidor HTTP ${resp.status} — retentando`); return ['processando', false]; }
+      if (!resp.ok) return ['erro', false];
+      const data = await resp.json();
+      if (!data.concluida) return ['processando', false];
+      const conclusao = typeof data.tipoConclusao === 'object' ? data.tipoConclusao?.value : String(data.tipoConclusao || '');
+      if (['CANCELADO', 'ERRO', 'FALHA'].includes(conclusao)) return ['erro', false];
+      return ['concluida', !!data.gerouResultado];
+    } catch (e) {
+      this.onLog(`  ⚠️ Timeout/conexão na consulta — retentando`);
+      return ['processando', false];
+    }
+  }
+
+  async _baixarZip(protocolo) {
+    try {
+      const resp = await fetch(`${DOWNLOAD_URL}/${protocolo}/resultado`, { headers: this._headers() });
+      if (!resp.ok || !resp.body) { this.onLog(`  ⚠️ Download HTTP ${resp.status}`); return null; }
+      return await resp.arrayBuffer();
+    } catch (e) {
+      this.onLog(`  ⚠️ Erro ao baixar: ${e.message}`);
+      return null;
+    }
+  }
+
+  async _verificarErros(zipBuffer) {
+    if (!zipBuffer) return [];
+    // Verificar magic bytes ZIP (PK\x03\x04)
+    const bytes = new Uint8Array(zipBuffer.slice(0, 4));
+    if (bytes[0] !== 0x50 || bytes[1] !== 0x4B || bytes[2] !== 0x03 || bytes[3] !== 0x04) return [];
+
+    const erros = [];
+    try {
+      const zip = await JSZip.loadAsync(zipBuffer);
+      for (const [nome, file] of Object.entries(zip.files)) {
+        if (!nome.endsWith('.html')) continue;
+        const html = await file.async('string');
+
+        // Estratégia 1: IDs qtdErroN
+        let totalErros = 0;
+        for (const m of html.matchAll(/id="qtdErro\d*"[^>]*>(\d+)/g)) totalErros += parseInt(m[1]);
+        if (totalErros > 0) {
+          erros.push(`[${nome}] ${totalErros} erro(s) no relatório`);
+          for (const m of html.matchAll(/class="table-danger"[\s\S]{0,300}?<td[^>]*>Erro<\/td>\s*<td[^>]*>([\s\S]*?)<\/td>/g)) {
+            const desc = m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 200);
+            if (desc) erros.push(`  → ${desc}`);
+          }
+          continue;
+        }
+        // Estratégia 2: table-danger
+        if ((html.match(/class="table-danger"/g) || []).length > 0) {
+          erros.push(`[${nome}] erro(s) detectado(s)`);
+        }
+      }
+    } catch (e) {
+      erros.push(`CRÍTICO: Falha ao analisar ZIP — ${e.message}`);
+    }
+    return erros;
+  }
+
+  _zipTemCorrecoesSucesso(html) {
+    return html.includes('foram corrigidos com sucesso');
+  }
+
+  async _aguardar(protocolo, desc) {
+    const inicio = Date.now();
+    let tentativa = 0;
+    while (!this._stop) {
+      tentativa++;
+      const elapsed = Math.floor((Date.now() - inicio) / 1000);
+      const m = Math.floor(elapsed / 60), s = elapsed % 60;
+      this.onLog(`  ⏳ [${tentativa}] Consultando '${desc}' (${m}m${s}s)...`);
+      const [status, gerouResultado] = await this._consultarStatus(protocolo);
+      if (status === 'concluida') {
+        if (gerouResultado) {
+          this.onLog(`  📦 Concluído com resultado — baixando...`);
+          let zip = await this._baixarZip(protocolo);
+          if (!zip) { await sleep(5_000); zip = await this._baixarZip(protocolo); }
+          return zip;
+        }
+        this.onLog(`  📋 Concluído sem arquivo de resultado`);
+        return null;
+      }
+      if (status === 'erro') throw new Error(`Execução de '${desc}' retornou ERRO (protocolo: ${protocolo})`);
+      await sleep(POLLING_MS);
+    }
+    throw new Error('Interrompido pelo usuário');
+  }
+
+  _buildPayload(assuntoValor, competencia) {
+    return {
+      parametros: {
+        assunto: assuntoValor, competencia, tipoEnvio: 'MANUAL', validarGerar: '1',
+        opcaoAbertosInscritos: 'TODOS', intervaloLancamento: '1', limparDadosExistentes: 'SIM',
+        tipoLancamento: 'TODOS', tipoBaixa: 'TODOS', enviarTodosAssuntos: 'NAO',
+        descarte: 'NAO', usuario: 'gerarDados', senha: 'gerarDados',
+      }
+    };
+  }
+
+  async _executarEtapa01(etapa) {
+    let assuntos = [...ASSUNTOS_ETAPA_01];
+    if (this.assuntoInicial > 0) {
+      this.onLog(`  ⏭️ Pulando assuntos 0 a ${this.assuntoInicial - 1}`);
+      assuntos = assuntos.slice(this.assuntoInicial);
+      this.assuntoInicial = 0; // reset para re-execuções
+    }
+
+    this.onLog('📋 Fase 1 — Disparando POSTs...');
+    const protocolos = [];
+    for (const [val, desc] of assuntos) {
+      if (this._stop) throw new Error('Interrompido pelo usuário');
+      this.onLog(`  🚀 Disparando: ${desc}`);
+      const protocolo = await this._post(etapa.id, this._buildPayload(val, this.competencia));
+      this.onLog(`     Protocolo: ${protocolo}`);
+      protocolos.push([desc, protocolo]);
+    }
+
+    this.onLog(`\n📋 Fase 2 — Monitorando ${protocolos.length} resultados...`);
+    const todosErros = [];
+
+    for (let i = 0; i < protocolos.length; i++) {
+      if (this._stop) throw new Error('Interrompido pelo usuário');
+      const [desc, protocolo] = protocolos[i];
+      this.onLog(`\n  [${i+1}/${protocolos.length}] Aguardando: ${desc}`);
+      const zip = await this._aguardar(protocolo, desc);
+      if (zip) {
+        const erros = await this._verificarErros(zip);
+        if (erros.length) {
+          todosErros.push(...erros);
+          this.onLog(`  🔴 ERRO em ${desc}:`);
+          erros.forEach(e => this.onLog(`     ${e}`));
+        } else {
+          this.onLog(`  ✅ ${desc} — sem erros`);
+        }
+      } else {
+        this.onLog(`  ℹ️ Sem resultado para ${desc}`);
+      }
+    }
+
+    if (todosErros.length) {
+      throw new Error(`Etapa 01: ${todosErros.length} erro(s):\n${todosErros.slice(0,30).join('\n')}`);
+    }
+    this.onLog('\n✅ Etapa 01 concluída — todos os 13 assuntos sem erros.');
+  }
+
+  async _executarEtapaSimples(etapa) {
+    let payload;
+    if (etapa.numero === 2) {
+      payload = { parametros: { competencia: this.competencia, p_assuntos: '["saldosIniciaisCreditoTributario"]', p_tipoExecucao: 'CORRIGIR_REGISTRO_SALDO' } };
+    } else if (etapa.numero === 9) {
+      payload = { parametros: { CONs: '[]', competencia: this.competencia, tipoCON: 'IMPEDITIVA' } };
+    } else {
+      payload = { parametros: { competencia: this.competencia } };
+    }
+
+    this.onLog(`  🚀 Disparando POST...`);
+    const protocolo = await this._post(etapa.id, payload);
+    this.onLog(`     Protocolo: ${protocolo}`);
+
+    const zip = await this._aguardar(protocolo, etapa.nome);
+
+    if (zip) {
+      const erros = await this._verificarErros(zip);
+      if (erros.length) {
+        this.onLog(`  🔴 ERROS encontrados:`);
+        erros.forEach(e => this.onLog(`     ${e}`));
+
+        if (etapa.ignoraErrosSeSucesso) {
+          // Verificar se o ZIP contém mensagem de sucesso
+          try {
+            const jzip = await JSZip.loadAsync(zip);
+            for (const [, file] of Object.entries(jzip.files)) {
+              const html = await file.async('string');
+              if (html.includes('foram corrigidos com sucesso')) {
+                this.onLog(`  ⚠️ Os erros acima indicam registros CORRIGIDOS com sucesso.`);
+                this.onLog(`  ✅ Etapa ${etapa.numero.toString().padStart(2,'0')} — correções aplicadas.`);
+                return;
+              }
+            }
+          } catch {}
+        }
+        throw new Error(`Etapa ${etapa.numero.toString().padStart(2,'0')} (${etapa.nome}): ${erros.length} erro(s)`);
+      }
+      this.onLog(`  ✅ Resultado verificado — ZERO erros.`);
+    } else {
+      if (etapa.geraZip === false) {
+        this.onLog(`  ✅ Execução concluída (etapa não gera arquivo).`);
+      } else if (etapa.geraZip === null) {
+        this.onLog(`  ✅ Concluído — nenhuma inconsistência encontrada.`);
+      } else {
+        throw new Error(`Etapa ${etapa.numero.toString().padStart(2,'0')}: esperava ZIP mas nenhum foi retornado.`);
+      }
+    }
+  }
+
+  async executar() {
+    const etapas = ETAPAS.filter(e => e.numero >= this.etapaInicial);
+    const total  = etapas.length;
+    let concluidas = 0;
+
+    try {
+      for (const etapa of etapas) {
+        if (this._stop) throw new Error('Interrompido pelo usuário');
+
+        this.onStatus(`Etapa ${String(etapa.numero).padStart(2,'0')} — ${etapa.nome}`);
+        this.onProgress(concluidas, total, etapa.nome);
+        this.onLog(`\n${'='.repeat(60)}`);
+        this.onLog(`🔄 ETAPA ${String(etapa.numero).padStart(2,'0')} - ${etapa.nome}`);
+        this.onLog(`   Identificador: ${etapa.id}`);
+        this.onLog('='.repeat(60));
+
+        if (etapa.multi) await this._executarEtapa01(etapa);
+        else             await this._executarEtapaSimples(etapa);
+
+        this.relatorio.etapasOk.push({ numero: etapa.numero, nome: etapa.nome });
+        concluidas++;
+        this.onLog(`\n   ══ Etapa ${String(etapa.numero).padStart(2,'0')} OK — avançando ══`);
+      }
+
+      this.relatorio.status = 'concluido_sucesso';
+      this.onProgress(total, total, '');
+      this.onLog(`\n${'='.repeat(60)}`);
+      this.onLog('🎉 TODAS AS ETAPAS CONCLUÍDAS COM SUCESSO!');
+      this.onLog('='.repeat(60));
+
+    } catch (e) {
+      if (e.message.includes('Interrompido')) {
+        this.relatorio.status = 'interrompido';
+      } else {
+        this.relatorio.status = 'erro';
+        this.relatorio.etapaErro   = this.relatorio.etapasOk.length + 1;
+        this.relatorio.detalheErro = e.message;
+      }
+      this.onLog(`\n${'='.repeat(60)}`);
+      this.onLog(`${e.message.includes('Interrompido') ? '⚠️' : '🔴'} ${e.message}`);
+      this.onLog('='.repeat(60));
+    }
+
+    this.relatorio.fim = new Date().toISOString();
+    return this.relatorio;
+  }
+}
+
+/* ══════════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════════ */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ══════════════════════════════════════════════
+   ESTADO DA UI
+══════════════════════════════════════════════ */
+let _executor = null;
+
+/* ══════════════════════════════════════════════
+   INIT — popular selects e restaurar histórico
+══════════════════════════════════════════════ */
+(function init() {
+  // Popular select de etapas
+  const selEtapa = document.getElementById('etapa-inicial');
+  ETAPAS.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.numero;
+    opt.textContent = `${String(e.numero).padStart(2,'0')} — ${e.nome}`;
+    selEtapa.appendChild(opt);
+  });
+
+  // Popular select de assuntos
+  const selAssunto = document.getElementById('assunto-inicial');
+  ASSUNTOS_ETAPA_01.forEach(([, desc], i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = desc;
+    selAssunto.appendChild(opt);
+  });
+
+  // Restaurar credenciais do localStorage
+  try {
+    const h = JSON.parse(localStorage.getItem(LS_HISTORY) || '{}');
+    if (h.authorization) document.getElementById('authorization').value = h.authorization;
+    if (h.userAccess)    document.getElementById('userAccess').value    = h.userAccess;
+  } catch {}
+})();
+
+/* ══════════════════════════════════════════════
+   CONSULTAR ENTIDADE
+══════════════════════════════════════════════ */
+async function consultarEntidade() {
+  const auth = document.getElementById('authorization').value.trim();
+  const ua   = document.getElementById('userAccess').value.trim();
+  const info = document.getElementById('entidade-info');
+  if (!auth || !ua) { info.textContent = 'Preencha Authorization e User-Access.'; info.className = 'info-tag err'; return; }
+  info.className = 'info-tag'; info.textContent = 'Consultando...';
+  try {
+    const resp = await fetch(`${LICENSES_URL}/entidades/atual/`, {
+      headers: { 'Content-Type': 'application/json', 'Authorization': `bearer ${auth}`, 'User-Access': ua }
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const d = await resp.json();
+    info.textContent = `📌 ${d.nome || '?'} — ID ${d.id || '?'}`;
+    info.className   = 'info-tag ok';
+    // Salvar no histórico
+    localStorage.setItem(LS_HISTORY, JSON.stringify({ authorization: auth, userAccess: ua }));
+    document.getElementById('cors-banner').style.display = 'none';
+  } catch (e) {
+    if (e.message.includes('Failed to fetch') || e.name === 'TypeError') {
+      info.textContent = '❌ CORS bloqueado — as APIs Betha não permitem chamadas diretas do browser. Contate o administrador.';
+      document.getElementById('cors-banner').style.display = '';
+    } else {
+      info.textContent = `Erro: ${e.message}`;
+    }
+    info.className = 'info-tag err';
+  }
+}
+
+/* ══════════════════════════════════════════════
+   CONSULTAR ENCERRAMENTOS
+══════════════════════════════════════════════ */
+const MES_MAP = { JANEIRO:'01', FEVEREIRO:'02', MARCO:'03', ABRIL:'04', MAIO:'05', JUNHO:'06', JULHO:'07', AGOSTO:'08', SETEMBRO:'09', OUTUBRO:'10', NOVEMBRO:'11', DEZEMBRO:'12' };
+
+async function consultarEncerramento() {
+  const auth = document.getElementById('authorization').value.trim();
+  const ua   = document.getElementById('userAccess').value.trim();
+  const ano  = document.getElementById('ano').value.trim();
+  const info = document.getElementById('encerramento-info');
+  if (!auth || !ua) { info.textContent = 'Preencha as credenciais primeiro.'; info.className = 'info-tag err'; return; }
+  info.className = 'info-tag'; info.textContent = 'Consultando...';
+  try {
+    const resp = await fetch(`${ENCERRAMENTO_URL}/${ano}`, {
+      headers: { 'Content-Type': 'application/json', 'Authorization': `bearer ${auth}`, 'User-Access': ua }
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    const enc = (data.content || []).filter(i => i.encerrado?.valor === 'SIM').map(i => i.mes?.descricao);
+    const abr = (data.content || []).filter(i => i.encerrado?.valor !== 'SIM').map(i => i.mes?.descricao);
+    info.textContent = (enc.length ? `🔒 Encerrados: ${enc.join(', ')}` : '✅ Nenhum mês encerrado') +
+                       (abr.length ? `  |  📂 Abertos: ${abr.join(', ')}` : '');
+    info.className   = 'info-tag ok';
+  } catch (e) {
+    info.textContent = `Erro: ${e.message}`; info.className = 'info-tag err';
+  }
+}
+
+/* ══════════════════════════════════════════════
+   TOGGLE EMAIL
+══════════════════════════════════════════════ */
+function toggleEmail() {
+  document.getElementById('email-field').style.display =
+    document.getElementById('enviar-email').checked ? '' : 'none';
+}
+
+/* ══════════════════════════════════════════════
+   EXECUÇÃO
+══════════════════════════════════════════════ */
+async function iniciarExecucao() {
+  const auth = document.getElementById('authorization').value.trim();
+  const ua   = document.getElementById('userAccess').value.trim();
+  const mes  = document.getElementById('mes').value;
+  const ano  = document.getElementById('ano').value.trim();
+
+  if (!auth || !ua)           { alert('Preencha Authorization e User-Access.'); return; }
+  if (!ano.match(/^\d{4}$/))  { alert('Informe um ano válido (4 dígitos).'); return; }
+
+  const competencia    = `${ano}-${mes}`;
+  const etapaInicial   = parseInt(document.getElementById('etapa-inicial').value)   || 1;
+  const assuntoInicial = parseInt(document.getElementById('assunto-inicial').value)  || 0;
+  const visibilidade   = document.getElementById('visibilidade').checked;
+  const enviarEmail    = document.getElementById('enviar-email').checked;
+  let emailsNotificar  = [];
+  if (enviarEmail) {
+    emailsNotificar = document.getElementById('emails').value.split(',').map(e => e.trim()).filter(Boolean);
+    if (!emailsNotificar.length) { alert('Informe ao menos um e-mail.'); return; }
+  }
+
+  // Salvar credenciais
+  localStorage.setItem(LS_HISTORY, JSON.stringify({ authorization: auth, userAccess: ua }));
+
+  limparLog();
+  document.getElementById('relatorio-section').style.display = 'none';
+  document.getElementById('btn-executar').disabled = true;
+  document.getElementById('btn-parar').disabled    = false;
+  setStatus('Iniciando...', 'run');
+
+  appendLog(`${'='.repeat(60)}`);
+  appendLog(`  e-Sfinge Online 2026 - Automação Tributos`);
+  appendLog(`${'='.repeat(60)}`);
+  appendLog(`📅 Competência: ${competencia}`);
+  appendLog(`🕐 Início: ${new Date().toLocaleString('pt-BR')}`);
+  appendLog(`⚙️ Total de etapas: ${ETAPAS.length}`);
+  if (etapaInicial > 1) appendLog(`⏭️ Começando na etapa: ${String(etapaInicial).padStart(2,'0')}`);
+  if (assuntoInicial > 0 && etapaInicial === 1) appendLog(`⏭️ Começando no assunto: [${String(assuntoInicial).padStart(2,'0')}]`);
+  appendLog(`⚠️ Qualquer ERRO em qualquer etapa PARA a execução!`);
+
+  _executor = new EsfingeExecutor({
+    authorization: auth, userAccess: ua, competencia, etapaInicial, assuntoInicial,
+    visibilidadePublica: visibilidade, enviarEmail, emailsNotificar,
+    onLog:      msg  => appendLog(msg),
+    onStatus:   msg  => setStatus(msg, 'run'),
+    onProgress: (done, total, nome) => setProgress(done, total, nome),
+  });
+
+  const relatorio = await _executor.executar();
+
+  document.getElementById('btn-executar').disabled = false;
+  document.getElementById('btn-parar').disabled    = true;
+
+  if (relatorio.status === 'concluido_sucesso') {
+    setStatus('✅ Todas as etapas concluídas com sucesso!', 'ok');
+  } else if (relatorio.status === 'erro') {
+    setStatus(`🔴 PAROU na etapa ${String(relatorio.etapaErro).padStart(2,'0')} — ERRO`, 'erro');
+  } else {
+    setStatus('⚠️ Interrompido pelo usuário', '');
+  }
+
+  mostrarRelatorio(relatorio);
+}
+
+function pararExecucao() {
+  if (_executor) {
+    _executor.stop();
+    appendLog('\n⚠️ Solicitando parada...');
+    document.getElementById('btn-parar').disabled = true;
+  }
+}
+
+/* ══════════════════════════════════════════════
+   UI HELPERS
+══════════════════════════════════════════════ */
+function appendLog(msg) {
+  const t = document.getElementById('terminal');
+  const div = document.createElement('span');
+
+  if      (msg.includes('✅') || msg.includes('🎉')) div.className = 'log-ok';
+  else if (msg.includes('🔴') || msg.includes('ERRO') || msg.includes('CRÍTICO')) div.className = 'log-err';
+  else if (msg.includes('⚠️') || msg.includes('Interrompido'))  div.className = 'log-warn';
+  else if (msg.includes('🔄') || msg.includes('📋') || msg.includes('🚀')) div.className = 'log-info';
+  else if (msg.startsWith('=') || msg.startsWith(' '))           div.className = 'log-sep';
+  else if (msg.includes('⏳') || msg.includes('ℹ️'))              div.className = 'log-dim';
+
+  div.textContent = msg + '\n';
+  t.appendChild(div);
+  t.scrollTop = t.scrollHeight;
+}
+
+function limparLog() {
+  document.getElementById('terminal').innerHTML = '';
+}
+
+function setStatus(msg, cls) {
+  const el = document.getElementById('status-val');
+  el.textContent = msg;
+  el.className   = `status-val ${cls || ''}`;
+}
+
+function setProgress(done, total, nome) {
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-label').textContent =
+    total > 0 ? `Etapa ${done}/${total}${nome ? ' — ' + nome : ''}` : '';
+}
+
+function mostrarRelatorio(rel) {
+  const sec = document.getElementById('relatorio-section');
+  const sta = document.getElementById('relatorio-status');
+  const bod = document.getElementById('relatorio-body');
+
+  let badge, lines = [];
+  if (rel.status === 'concluido_sucesso') {
+    badge = '<span class="badge-status badge-ok">✅ Sucesso total</span>';
+  } else if (rel.status === 'erro') {
+    const etapaNome = ETAPAS.find(e => e.numero === rel.etapaErro)?.nome || '';
+    badge = `<span class="badge-status badge-erro">🔴 Erro — etapa ${rel.etapaErro} ${etapaNome}</span>`;
+  } else {
+    badge = '<span class="badge-status badge-inter">⚠️ Interrompido</span>';
+  }
+
+  sta.innerHTML = badge;
+
+  lines.push(`Início : ${new Date(rel.inicio).toLocaleString('pt-BR')}`);
+  lines.push(`Fim    : ${new Date(rel.fim).toLocaleString('pt-BR')}`);
+  lines.push(`Status : ${rel.status}`);
+  lines.push('');
+  lines.push('ETAPAS EXECUTADAS COM SUCESSO:');
+  if (rel.etapasOk.length) {
+    rel.etapasOk.forEach(e => lines.push(`  ✅ Etapa ${String(e.numero).padStart(2,'0')} — ${e.nome}`));
+  } else {
+    lines.push('  (nenhuma)');
+  }
+  if (rel.detalheErro) {
+    lines.push('');
+    lines.push('DETALHE DO ERRO:');
+    lines.push(rel.detalheErro);
+  }
+
+  bod.textContent = lines.join('\n');
+  sec.style.display = '';
+  sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+</body>
+</html>

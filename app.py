@@ -35,6 +35,12 @@ def agrupador_erros_page():
     return render_template("agrupador-erros.html")
 
 
+@app.route("/executor")
+@app.route("/executor.html")
+def executor_page():
+    return render_template("executor.html")
+
+
 @app.route("/api/autenticar", methods=["POST"])
 def autenticar():
     body = request.json
